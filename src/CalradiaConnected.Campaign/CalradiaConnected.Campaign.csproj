@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <RootNamespace>CalradiaConnected.Campaign</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Lib.Harmony" Version="2.3.3" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CalradiaConnected.Common\CalradiaConnected.Common.csproj" />
+    <ProjectReference Include="..\CalradiaConnected.Network\CalradiaConnected.Network.csproj" />
+    <ProjectReference Include="..\CalradiaConnected.Engine\CalradiaConnected.Engine.csproj" />
+  </ItemGroup>
+</Project>
+

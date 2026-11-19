@@ -1,0 +1,198 @@
+<Prefab>
+  <Window>
+    <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true">
+      <Children>
+
+        <!-- Synchronized P2P Dialog & Server-Authoritative Mutual Trade Panel -->
+        <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="820" SuggestedHeight="680" HorizontalAlignment="Center" VerticalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#14110EF5">
+          <Children>
+            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="StdAssets\Popup\canvas_dark" AlphaFactor="0.96" IsEnabled="false" DoNotAcceptEvents="true" />
+            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="StdAssets\Popup\canvas_gradient" IsEnabled="false" DoNotAcceptEvents="true" />
+            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="frame_9" ExtendLeft="18" ExtendTop="18" ExtendRight="18" ExtendBottom="18" IsEnabled="false" DoNotAcceptEvents="true" />
+
+            <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="36" MarginRight="36" MarginTop="20" MarginBottom="18" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+              <Children>
+
+                <!-- Header: Title & Peer Role Badge -->
+                <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="34" HorizontalAlignment="Center" Brush="Popup.Title.Text" Brush.FontSize="25" Text="@TitleText" DoNotAcceptEvents="true" />
+                <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="22" MarginTop="2" HorizontalAlignment="Center" Brush="Popup.Description.Text" Brush.FontSize="15" Brush.TextHorizontalAlignment="Center" Brush.FontColor="#E2B96EFF" Text="@RoleIndicatorText" DoNotAcceptEvents="true" />
+
+                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="12" MarginTop="4" MarginBottom="6" Sprite="StdAssets\Popup\divider" IsEnabled="false" DoNotAcceptEvents="true" />
+
+                <!-- Current Active Speech Box -->
+                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="116" Sprite="BlankWhiteSquare_9" Color="#0A0806E6" DoNotAcceptEvents="true">
+                  <Children>
+                    <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="WhiteFrame_9" Color="#967846FF" IsEnabled="false" DoNotAcceptEvents="true" />
+                    <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="14" MarginRight="14" MarginTop="8" MarginBottom="8" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+                      <Children>
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="24" HorizontalAlignment="Left" Brush="Popup.Title.Text" Brush.FontSize="18" Brush.FontColor="#FCD34DFF" Text="@SpeakerHeaderText" DoNotAcceptEvents="true" />
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="68" MarginTop="4" HorizontalAlignment="Left" Brush="Popup.Description.Text" Brush.FontSize="16" Text="@CurrentSpeechText" DoNotAcceptEvents="true" />
+                      </Children>
+                    </ListPanel>
+                  </Children>
+                </Widget>
+
+                <!-- Recent Transcript -->
+                <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="58" MarginTop="6" HorizontalAlignment="Left" Brush="Popup.Description.Text" Brush.FontSize="13" Brush.FontColor="#C8C2B8FF" Text="@HistoryText" DoNotAcceptEvents="true" />
+
+                <!-- SERVER-AUTHORITATIVE MUTUAL TRADE TABLE -->
+                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="CoverChildren" MarginTop="6" MarginBottom="6" Sprite="BlankWhiteSquare_9" Color="#10141BE8" DoNotAcceptEvents="true">
+                  <Children>
+                    <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="WhiteFrame_9" Color="#D4AF3799" IsEnabled="false" DoNotAcceptEvents="true" />
+                    <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="CoverChildren" MarginLeft="14" MarginRight="14" MarginTop="8" MarginBottom="8" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+                      <Children>
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="22" HorizontalAlignment="Left" Brush="Popup.Title.Text" Brush.FontSize="15" Brush.FontColor="#FBBF24FF" Text="@TradeHeaderText" DoNotAcceptEvents="true" />
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="22" MarginTop="3" HorizontalAlignment="Left" Brush="Popup.Description.Text" Brush.FontSize="14" Brush.FontColor="#E5E7EBFF" Text="@TradeInitiatorLineText" DoNotAcceptEvents="true" />
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="22" MarginTop="2" HorizontalAlignment="Left" Brush="Popup.Description.Text" Brush.FontSize="14" Brush.FontColor="#E5E7EBFF" Text="@TradeTargetLineText" DoNotAcceptEvents="true" />
+
+                        <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="Fixed" SuggestedHeight="40" MarginTop="6" HorizontalAlignment="Center" StackLayout.LayoutMethod="HorizontalLeftToRight" IsVisible="@HasActiveTrade" DoNotAcceptEvents="true">
+                          <Children>
+                            <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="220" SuggestedHeight="38" MarginRight="10" Brush="Popup.Done.Button" Command.Click="ExecuteOptionTradeAccept">
+                              <Children>
+                                <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="Popup.Button.Text" Brush.FontSize="15" Text="@TradeAcceptButtonText" DoNotAcceptEvents="true" />
+                              </Children>
+                            </ButtonWidget>
+                            <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="180" SuggestedHeight="38" MarginLeft="10" Brush="Popup.Cancel.Button" Command.Click="ExecuteOptionTradeReset">
+                              <Children>
+                                <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="Popup.Button.Text" Brush.FontSize="15" Text="@TradeResetButtonText" DoNotAcceptEvents="true" />
+                              </Children>
+                            </ButtonWidget>
+                          </Children>
+                        </ListPanel>
+                      </Children>
+                    </ListPanel>
+                  </Children>
+                </Widget>
+
+                <!-- INITIATOR BRANCH BUTTONS -->
+                <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="CoverChildren" MarginTop="4" StackLayout.LayoutMethod="VerticalTopToBottom" IsVisible="@IsInitiatorMode" DoNotAcceptEvents="true">
+                  <Children>
+                    <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="42" MarginBottom="6" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                      <Children>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="181" SuggestedHeight="40" MarginRight="8" Brush="ButtonBrush1" Command.Click="ExecuteOptionGold">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="@OptionGoldText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="181" SuggestedHeight="40" MarginRight="8" Brush="ButtonBrush1" Command.Click="ExecuteOptionTroops">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="@OptionTroopsText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="181" SuggestedHeight="40" MarginRight="8" Brush="ButtonBrush1" Command.Click="ExecuteOptionItem">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="@OptionItemText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="181" SuggestedHeight="40" Brush="ButtonBrush1" Command.Click="ExecuteOptionShip">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="@OptionShipText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                      </Children>
+                    </ListPanel>
+
+                    <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="42" MarginBottom="6" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                      <Children>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="364" SuggestedHeight="40" MarginRight="10" Brush="ButtonBrush2" Command.Click="ExecuteOptionDuel">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="@OptionDuelText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="364" SuggestedHeight="40" MarginLeft="10" Brush="ButtonBrush2" Command.Click="ExecuteOptionRally">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="@OptionRallyText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                      </Children>
+                    </ListPanel>
+
+                    <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="42" MarginBottom="4" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                      <Children>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="364" SuggestedHeight="40" MarginRight="10" Brush="ButtonBrush3" Command.Click="ExecuteOptionSay">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="@OptionSayText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="364" SuggestedHeight="40" MarginLeft="10" Brush="Popup.Cancel.Button" Command.Click="ExecuteOptionAttack">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="Popup.Button.Text" Brush.FontSize="15" Text="@OptionAttackText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                      </Children>
+                    </ListPanel>
+                  </Children>
+                </ListPanel>
+
+                <!-- WATCHER / TARGET LIVE FOLLOW PANEL -->
+                <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="CoverChildren" MarginTop="4" StackLayout.LayoutMethod="VerticalTopToBottom" IsVisible="@IsWatcherMode" DoNotAcceptEvents="true">
+                  <Children>
+                    <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="28" HorizontalAlignment="Center" Brush="Popup.Description.Text" Brush.FontSize="15" Brush.TextHorizontalAlignment="Center" Brush.FontColor="#93C5FDFF" Text="@WatcherHintText" DoNotAcceptEvents="true" />
+
+                    <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="Fixed" SuggestedHeight="44" MarginTop="6" HorizontalAlignment="Center" StackLayout.LayoutMethod="HorizontalLeftToRight" IsVisible="@HasPendingProposal" DoNotAcceptEvents="true">
+                      <Children>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="220" SuggestedHeight="42" MarginRight="12" Brush="Popup.Done.Button" Command.Click="ExecuteAcceptProposal">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="Popup.Button.Text" Brush.FontSize="16" Text="@AcceptProposalText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="220" SuggestedHeight="42" MarginLeft="12" Brush="Popup.Cancel.Button" Command.Click="ExecuteDeclineProposal">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="Popup.Button.Text" Brush.FontSize="16" Text="@DeclineProposalText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                      </Children>
+                    </ListPanel>
+
+                    <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="42" MarginTop="6" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                      <Children>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="181" SuggestedHeight="40" MarginRight="8" Brush="ButtonBrush1" Command.Click="ExecuteOptionGold">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="@WatcherOfferGoldText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="181" SuggestedHeight="40" MarginRight="8" Brush="ButtonBrush1" Command.Click="ExecuteOptionTroops">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="@WatcherOfferTroopsText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="181" SuggestedHeight="40" MarginRight="8" Brush="ButtonBrush1" Command.Click="ExecuteOptionItem">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="@WatcherOfferItemText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="181" SuggestedHeight="40" Brush="ButtonBrush1" Command.Click="ExecuteOptionShip">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="@WatcherOfferShipText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                      </Children>
+                    </ListPanel>
+                  </Children>
+                </ListPanel>
+
+                <!-- Footer Return / Close Buttons -->
+                <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="Fixed" SuggestedHeight="46" MarginTop="10" HorizontalAlignment="Center" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                  <Children>
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="240" SuggestedHeight="44" MarginRight="10" Brush="ButtonBrush2" Command.Click="ExecuteCloseTrade">
+                      <Children>
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="16" Text="@CloseTradeButtonText" DoNotAcceptEvents="true" />
+                      </Children>
+                    </ButtonWidget>
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="230" SuggestedHeight="44" MarginLeft="10" Brush="Popup.Cancel.Button" Command.Click="ExecuteCloseDialog">
+                      <Children>
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="Popup.Button.Text" Brush.FontSize="16" Text="@CloseButtonText" DoNotAcceptEvents="true" />
+                      </Children>
+                    </ButtonWidget>
+                  </Children>
+                </ListPanel>
+
+              </Children>
+            </ListPanel>
+          </Children>
+        </Widget>
+
+      </Children>
+    </Widget>
+  </Window>
+</Prefab>

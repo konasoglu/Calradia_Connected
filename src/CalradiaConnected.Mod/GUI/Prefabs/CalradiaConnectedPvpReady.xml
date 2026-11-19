@@ -1,0 +1,33 @@
+<Prefab>
+  <Window>
+    <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" DoNotAcceptEvents="true">
+      <Children>
+
+        <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="540" SuggestedHeight="132" HorizontalAlignment="Center" VerticalAlignment="Top" MarginTop="24" Sprite="BlankWhiteSquare_9" Color="#14110EE8" DoNotAcceptEvents="true">
+          <Children>
+            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="WhiteFrame_9" Color="#D4AF37CC" IsEnabled="false" DoNotAcceptEvents="true" />
+
+            <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="18" MarginRight="18" MarginTop="10" MarginBottom="10" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+              <Children>
+
+                <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="26" HorizontalAlignment="Center" Brush="Popup.Title.Text" Brush.FontSize="20" Brush.FontColor="#FCD34DFF" Text="@TitleText" DoNotAcceptEvents="true" />
+
+                <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="24" MarginTop="4" HorizontalAlignment="Center" Brush="Popup.Description.Text" Brush.FontSize="16" Brush.TextHorizontalAlignment="Center" Brush.FontColor="#F3F4F6FF" Text="@StatusText" DoNotAcceptEvents="true" />
+
+                <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="260" SuggestedHeight="42" MarginTop="8" HorizontalAlignment="Center" Brush="Popup.Done.Button" IsVisible="@CanClickReady" Command.Click="ExecuteReady">
+                  <Children>
+                    <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="Popup.Button.Text" Brush.FontSize="17" Text="@ReadyButtonText" DoNotAcceptEvents="true" />
+                  </Children>
+                </ButtonWidget>
+
+                <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginTop="8" HorizontalAlignment="Center" Brush="Popup.Description.Text" Brush.FontSize="15" Brush.TextHorizontalAlignment="Center" Brush.FontColor="#86EFACFF" IsVisible="@IsWaitingForOpponent" Text="@WaitingHintText" DoNotAcceptEvents="true" />
+
+              </Children>
+            </ListPanel>
+          </Children>
+        </Widget>
+
+      </Children>
+    </Widget>
+  </Window>
+</Prefab>

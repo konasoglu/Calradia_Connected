@@ -1,0 +1,500 @@
+<Prefab>
+  <Window>
+    <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="BlankWhiteSquare_9" Color="#080A10E8">
+      <Children>
+
+        <!-- ================================================================== -->
+        <!-- CENTER LOGIN / LOBBY / CREDITS CARD                                -->
+        <!-- ================================================================== -->
+        <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="680" SuggestedHeight="680" HorizontalAlignment="Center" VerticalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#14110EF8">
+          <Children>
+
+            <!-- Authentic Always-Loaded Bannerlord Popup Canvas & Ornate Frame -->
+            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="StdAssets\Popup\canvas_dark" AlphaFactor="0.95" IsEnabled="false" DoNotAcceptEvents="true" />
+            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="StdAssets\Popup\canvas_gradient" IsEnabled="false" DoNotAcceptEvents="true" />
+            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="frame_9" ExtendLeft="18" ExtendTop="18" ExtendRight="18" ExtendBottom="18" IsEnabled="false" DoNotAcceptEvents="true" />
+
+            <!-- ============================================================== -->
+            <!-- 1. MAIN PANEL (DIRECT CONNECT + LOBBY TABS)                    -->
+            <!-- ============================================================== -->
+            <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="42" MarginRight="42" MarginTop="26" MarginBottom="24" StackLayout.LayoutMethod="VerticalTopToBottom" IsVisible="@IsMainPanelVisible" DoNotAcceptEvents="true">
+              <Children>
+
+                <!-- Header Title -->
+                <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="42" HorizontalAlignment="Center" Brush="Popup.Title.Text" Brush.FontSize="32" Text="@TitleText" DoNotAcceptEvents="true" />
+
+                <!-- Mode Switcher Row: Doğrudan Bağlan vs Lobi (Ağ / Steam) -->
+                <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="Fixed" SuggestedHeight="46" MarginTop="6" HorizontalAlignment="Center" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                  <Children>
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="280" SuggestedHeight="42" MarginRight="10" Brush="ButtonBrush1" Command.Click="ExecuteShowDirectConnect">
+                      <Children>
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="17" Text="@DirectTabButtonText" DoNotAcceptEvents="true" />
+                      </Children>
+                    </ButtonWidget>
+
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="280" SuggestedHeight="42" MarginLeft="10" Brush="ButtonBrush2" Command.Click="ExecuteOpenLobby">
+                      <Children>
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="17" Text="@LobbyTabButtonText" DoNotAcceptEvents="true" />
+                      </Children>
+                    </ButtonWidget>
+                  </Children>
+                </ListPanel>
+
+                <!-- Ornate Divider -->
+                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="20" MarginTop="6" MarginBottom="8" Sprite="StdAssets\Popup\divider" IsEnabled="false" DoNotAcceptEvents="true" />
+
+                <!-- ========================================================== -->
+                <!-- VIEW A: DOĞRUDAN BAĞLANTI & GİRİŞ FORMU                    -->
+                <!-- ========================================================== -->
+                <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="CoverChildren" StackLayout.LayoutMethod="VerticalTopToBottom" IsVisible="@IsLoginFormVisible" DoNotAcceptEvents="true">
+                  <Children>
+
+                    <!-- Row 1: Side-by-Side IP Address and Port Boxes -->
+                    <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="Fixed" SuggestedHeight="78" MarginBottom="10" HorizontalAlignment="Center" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                      <Children>
+                        <!-- Left Box: Sunucu IP Adresi -->
+                        <ListPanel WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="390" SuggestedHeight="78" MarginRight="16" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="24" HorizontalAlignment="Left" Brush="Popup.Description.Text" Brush.FontSize="17" Text="@ServerIpLabel" DoNotAcceptEvents="true" />
+                            <Widget DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="48" MarginTop="4" Sprite="BlankWhiteSquare_9" Color="#0A0806F2">
+                              <Children>
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="WhiteFrame_9" Color="#967846FF" IsEnabled="false" DoNotAcceptEvents="true" />
+                                <EditableTextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="12" MarginRight="12" MarginTop="6" MarginBottom="6" Brush="Review.NameInput.Text" Brush.FontSize="22" RealText="@ServerIp" IsObfuscationEnabled="false" MaxLength="64" />
+                              </Children>
+                            </Widget>
+                          </Children>
+                        </ListPanel>
+
+                        <!-- Right Box: Port -->
+                        <ListPanel WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="170" SuggestedHeight="78" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="24" HorizontalAlignment="Left" Brush="Popup.Description.Text" Brush.FontSize="17" Text="@ServerPortLabel" DoNotAcceptEvents="true" />
+                            <Widget DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="48" MarginTop="4" Sprite="BlankWhiteSquare_9" Color="#0A0806F2">
+                              <Children>
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="WhiteFrame_9" Color="#967846FF" IsEnabled="false" DoNotAcceptEvents="true" />
+                                <EditableTextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="12" MarginRight="12" MarginTop="6" MarginBottom="6" Brush="Review.NameInput.Text" Brush.FontSize="22" RealText="@ServerPort" IsObfuscationEnabled="false" MaxLength="6" />
+                              </Children>
+                            </Widget>
+                          </Children>
+                        </ListPanel>
+                      </Children>
+                    </ListPanel>
+
+                    <!-- Row 2: Username -->
+                    <ListPanel WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="576" SuggestedHeight="78" MarginBottom="10" HorizontalAlignment="Center" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+                      <Children>
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="24" HorizontalAlignment="Left" Brush="Popup.Description.Text" Brush.FontSize="17" Text="@UsernameLabel" DoNotAcceptEvents="true" />
+                        <Widget DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="48" MarginTop="4" Sprite="BlankWhiteSquare_9" Color="#0A0806F2">
+                          <Children>
+                            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="WhiteFrame_9" Color="#967846FF" IsEnabled="false" DoNotAcceptEvents="true" />
+                            <EditableTextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="12" MarginRight="12" MarginTop="6" MarginBottom="6" Brush="Review.NameInput.Text" Brush.FontSize="22" RealText="@Username" IsObfuscationEnabled="false" MaxLength="32" />
+                          </Children>
+                        </Widget>
+                      </Children>
+                    </ListPanel>
+
+                    <!-- Row 3: Side-by-Side Account Password & Server (Lobby) Password -->
+                    <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="Fixed" SuggestedHeight="78" MarginBottom="12" HorizontalAlignment="Center" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                      <Children>
+                        <!-- Left Box: Hesap Şifresi -->
+                        <ListPanel WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="280" SuggestedHeight="78" MarginRight="16" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="24" HorizontalAlignment="Left" Brush="Popup.Description.Text" Brush.FontSize="17" Text="@PasswordLabel" DoNotAcceptEvents="true" />
+                            <Widget DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="48" MarginTop="4" Sprite="BlankWhiteSquare_9" Color="#0A0806F2">
+                              <Children>
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="WhiteFrame_9" Color="#967846FF" IsEnabled="false" DoNotAcceptEvents="true" />
+                                <EditableTextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="12" MarginRight="12" MarginTop="6" MarginBottom="6" Brush="Review.NameInput.Text" Brush.FontSize="22" RealText="@Password" IsObfuscationEnabled="true" MaxLength="64" />
+                              </Children>
+                            </Widget>
+                          </Children>
+                        </ListPanel>
+
+                        <!-- Right Box: Sunucu Şifresi (Varsa) -->
+                        <ListPanel WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="280" SuggestedHeight="78" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="24" HorizontalAlignment="Left" Brush="Popup.Description.Text" Brush.FontSize="17" Text="@ServerPasswordLabel" DoNotAcceptEvents="true" />
+                            <Widget DoNotAcceptEvents="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="48" MarginTop="4" Sprite="BlankWhiteSquare_9" Color="#0A0806F2">
+                              <Children>
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="WhiteFrame_9" Color="#967846FF" IsEnabled="false" DoNotAcceptEvents="true" />
+                                <EditableTextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="12" MarginRight="12" MarginTop="6" MarginBottom="6" Brush="Review.NameInput.Text" Brush.FontSize="22" RealText="@ServerPassword" IsObfuscationEnabled="true" MaxLength="64" />
+                              </Children>
+                            </Widget>
+                          </Children>
+                        </ListPanel>
+                      </Children>
+                    </ListPanel>
+
+                    <!-- Row 4: Remember Me Toggle -->
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="340" SuggestedHeight="44" MarginBottom="8" HorizontalAlignment="Center" Brush="ButtonBrush2" Command.Click="ExecuteToggleRememberMe">
+                      <Children>
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="17" Text="@RememberMeButtonText" DoNotAcceptEvents="true" />
+                      </Children>
+                    </ButtonWidget>
+
+                    <!-- Row 5: Status / Password Validation Message -->
+                    <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="42" MarginBottom="8" HorizontalAlignment="Center" Brush="Popup.Description.Text" Brush.FontSize="16" Brush.TextHorizontalAlignment="Center" Text="@StatusText" DoNotAcceptEvents="true" />
+
+                    <!-- Row 6: Action Buttons (İptal & Bağlan) -->
+                    <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="Fixed" SuggestedHeight="62" HorizontalAlignment="Center" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                      <Children>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="245" SuggestedHeight="58" MarginRight="16" Brush="Popup.Cancel.Button" Command.Click="ExecuteCancel">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="Popup.Button.Text" Brush.FontSize="21" Text="@CancelButtonText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="245" SuggestedHeight="58" MarginLeft="16" Brush="Popup.Done.Button" Command.Click="ExecuteConnect">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="Popup.Button.Text" Brush.FontSize="21" Text="@ConnectButtonText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                      </Children>
+                    </ListPanel>
+
+                  </Children>
+                </ListPanel>
+
+                <!-- ========================================================== -->
+                <!-- VIEW B: LOBİ (AĞ VE STEAM OYUNLARI TARAYICISI)             -->
+                <!-- ========================================================== -->
+                <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="CoverChildren" StackLayout.LayoutMethod="VerticalTopToBottom" IsVisible="@IsLobbyVisible" DoNotAcceptEvents="true">
+                  <Children>
+                    <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="32" MarginBottom="10" HorizontalAlignment="Center" Brush="Popup.Description.Text" Brush.FontSize="17" Brush.TextHorizontalAlignment="Center" Text="@LobbyStatusText" DoNotAcceptEvents="true" />
+
+                    <!-- Discovered Server Slots -->
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="576" SuggestedHeight="56" MarginBottom="8" HorizontalAlignment="Center" Brush="ButtonBrush1" Command.Click="ExecuteSelectLobbySlot0" IsVisible="@HasLobbySlot0">
+                      <Children>
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="14" MarginRight="14" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="17" Text="@LobbySlot0Text" DoNotAcceptEvents="true" />
+                      </Children>
+                    </ButtonWidget>
+
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="576" SuggestedHeight="56" MarginBottom="8" HorizontalAlignment="Center" Brush="ButtonBrush1" Command.Click="ExecuteSelectLobbySlot1" IsVisible="@HasLobbySlot1">
+                      <Children>
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="14" MarginRight="14" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="17" Text="@LobbySlot1Text" DoNotAcceptEvents="true" />
+                      </Children>
+                    </ButtonWidget>
+
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="576" SuggestedHeight="56" MarginBottom="8" HorizontalAlignment="Center" Brush="ButtonBrush1" Command.Click="ExecuteSelectLobbySlot2" IsVisible="@HasLobbySlot2">
+                      <Children>
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="14" MarginRight="14" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="17" Text="@LobbySlot2Text" DoNotAcceptEvents="true" />
+                      </Children>
+                    </ButtonWidget>
+
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="576" SuggestedHeight="56" MarginBottom="14" HorizontalAlignment="Center" Brush="ButtonBrush1" Command.Click="ExecuteSelectLobbySlot3" IsVisible="@HasLobbySlot3">
+                      <Children>
+                        <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="14" MarginRight="14" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="17" Text="@LobbySlot3Text" DoNotAcceptEvents="true" />
+                      </Children>
+                    </ButtonWidget>
+
+                    <!-- Lobby Action Buttons -->
+                    <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="Fixed" SuggestedHeight="60" MarginTop="16" HorizontalAlignment="Center" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                      <Children>
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="270" SuggestedHeight="54" MarginRight="12" Brush="ButtonBrush2" Command.Click="ExecuteRefreshLobby">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="18" Text="@RefreshLobbyButtonText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+
+                        <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="245" SuggestedHeight="54" MarginLeft="12" Brush="Popup.Cancel.Button" Command.Click="ExecuteShowDirectConnect">
+                          <Children>
+                            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="Popup.Button.Text" Brush.FontSize="18" Text="@BackToLoginButtonText" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ButtonWidget>
+                      </Children>
+                    </ListPanel>
+                  </Children>
+                </ListPanel>
+
+              </Children>
+            </ListPanel>
+
+            <!-- ============================================================== -->
+            <!-- 2. EMEĞİ GEÇENLER (CREDITS) VIEW (INSIDE SAME CARD)            -->
+            <!-- ============================================================== -->
+            <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="CoverChildren" MarginLeft="42" MarginRight="42" VerticalAlignment="Center" StackLayout.LayoutMethod="VerticalTopToBottom" IsVisible="@IsCreditsVisible" DoNotAcceptEvents="true">
+              <Children>
+                <!-- Başlık: Calradia Connected -->
+                <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="52" HorizontalAlignment="Center" Brush="Popup.Title.Text" Brush.FontSize="36" Text="@CreditsTitle" DoNotAcceptEvents="true" />
+
+                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="22" MarginTop="8" MarginBottom="24" Sprite="StdAssets\Popup\divider" IsEnabled="false" DoNotAcceptEvents="true" />
+
+                <!-- Alt Başlık: Geliştirici -->
+                <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" HorizontalAlignment="Center" Brush="Popup.Description.Text" Brush.FontSize="24" Brush.TextHorizontalAlignment="Center" Text="@CreditsDeveloperRole" DoNotAcceptEvents="true" />
+
+                <!-- Renkli: konasoglu -->
+                <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="54" MarginTop="6" MarginBottom="36" HorizontalAlignment="Center" Brush="Popup.Title.Text" Brush.FontSize="34" Brush.FontColor="#38BDF8FF" Text="@CreditsDeveloperName" DoNotAcceptEvents="true" />
+
+                <!-- Kapat Butonu -->
+                <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="245" SuggestedHeight="58" HorizontalAlignment="Center" Brush="Popup.Done.Button" Command.Click="ExecuteCloseCredits">
+                  <Children>
+                    <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="Popup.Button.Text" Brush.FontSize="20" Text="@CloseCreditsButtonText" DoNotAcceptEvents="true" />
+                  </Children>
+                </ButtonWidget>
+              </Children>
+            </ListPanel>
+
+          </Children>
+        </Widget>
+
+        <!-- ================================================================== -->
+        <!-- 3. TOP-RIGHT LANGUAGE PICKER WITH VISIBLE FLAG ICON                -->
+        <!-- ================================================================== -->
+        <ListPanel WidthSizePolicy="Fixed" HeightSizePolicy="CoverChildren" SuggestedWidth="200" HorizontalAlignment="Right" VerticalAlignment="Top" MarginRight="40" MarginTop="26" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+          <Children>
+            <!-- Active Language Pill Button -->
+            <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="200" SuggestedHeight="46" Brush="ButtonBrush3" Command.Click="ExecuteToggleLanguageMenu">
+              <Children>
+                <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Center" VerticalAlignment="Center" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                  <Children>
+                    <!-- Active Flag Icon (28x18 framed) -->
+                    <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="28" SuggestedHeight="18" VerticalAlignment="Center" MarginRight="10" Sprite="BlankWhiteSquare_9" Color="#000000FF" DoNotAcceptEvents="true">
+                      <Children>
+                        <!-- TR: Red + White Crescent/Star Accent -->
+                        <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" Sprite="BlankWhiteSquare_9" Color="#E30A17FF" IsVisible="@IsFlagTR" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="7" SuggestedHeight="8" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="5" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="5" SuggestedHeight="6" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="7" Sprite="BlankWhiteSquare_9" Color="#E30A17FF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="3" SuggestedHeight="3" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="14" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                          </Children>
+                        </Widget>
+                        <!-- EN: Union Jack Blue + White & Red Cross -->
+                        <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" Sprite="BlankWhiteSquare_9" Color="#012169FF" IsVisible="@IsFlagEN" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="6" VerticalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="6" HorizontalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="3" VerticalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#C8102EFF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="3" HorizontalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#C8102EFF" DoNotAcceptEvents="true" />
+                          </Children>
+                        </Widget>
+                        <!-- PL: White / Red -->
+                        <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" StackLayout.LayoutMethod="VerticalTopToBottom" IsVisible="@IsFlagPL" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="8" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="8" Sprite="BlankWhiteSquare_9" Color="#DC143CFF" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ListPanel>
+                        <!-- DE: Black / Red / Gold -->
+                        <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" StackLayout.LayoutMethod="VerticalTopToBottom" IsVisible="@IsFlagDE" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="5" Sprite="BlankWhiteSquare_9" Color="#111111FF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="6" Sprite="BlankWhiteSquare_9" Color="#DD0000FF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="5" Sprite="BlankWhiteSquare_9" Color="#FFCE00FF" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ListPanel>
+                        <!-- RU: White / Blue / Red -->
+                        <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" StackLayout.LayoutMethod="VerticalTopToBottom" IsVisible="@IsFlagRU" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="5" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="6" Sprite="BlankWhiteSquare_9" Color="#0039A6FF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="5" Sprite="BlankWhiteSquare_9" Color="#D52B1EFF" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ListPanel>
+                        <!-- FR: Blue | White | Red -->
+                        <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" StackLayout.LayoutMethod="HorizontalLeftToRight" IsVisible="@IsFlagFR" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="9" Sprite="BlankWhiteSquare_9" Color="#0055A4FF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="8" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="9" Sprite="BlankWhiteSquare_9" Color="#EF4135FF" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ListPanel>
+                        <!-- IT: Green | White | Red -->
+                        <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" StackLayout.LayoutMethod="HorizontalLeftToRight" IsVisible="@IsFlagIT" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="9" Sprite="BlankWhiteSquare_9" Color="#009246FF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="8" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="9" Sprite="BlankWhiteSquare_9" Color="#CE2B37FF" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ListPanel>
+                        <!-- ZH: Red + Gold Star Accent -->
+                        <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="1" MarginRight="1" MarginTop="1" MarginBottom="1" Sprite="BlankWhiteSquare_9" Color="#DE2910FF" IsVisible="@IsFlagZH" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="5" SuggestedHeight="5" HorizontalAlignment="Left" VerticalAlignment="Top" MarginLeft="3" MarginTop="3" Sprite="BlankWhiteSquare_9" Color="#FFDE00FF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="2" SuggestedHeight="2" HorizontalAlignment="Left" VerticalAlignment="Top" MarginLeft="10" MarginTop="2" Sprite="BlankWhiteSquare_9" Color="#FFDE00FF" DoNotAcceptEvents="true" />
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="2" SuggestedHeight="2" HorizontalAlignment="Left" VerticalAlignment="Top" MarginLeft="11" MarginTop="6" Sprite="BlankWhiteSquare_9" Color="#FFDE00FF" DoNotAcceptEvents="true" />
+                          </Children>
+                        </Widget>
+                      </Children>
+                    </Widget>
+                    <TextWidget WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="17" Text="@LanguageButtonText" DoNotAcceptEvents="true" />
+                  </Children>
+                </ListPanel>
+              </Children>
+            </ButtonWidget>
+
+            <!-- Dropdown Panel: All 8 Languages with Crisp Visible Flags -->
+            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="CoverChildren" SuggestedWidth="200" MarginTop="4" Sprite="BlankWhiteSquare_9" Color="#111318F5" IsVisible="@IsLanguageMenuOpen" DoNotAcceptEvents="true">
+              <Children>
+                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="WhiteFrame_9" Color="#C89B3CFF" IsEnabled="false" DoNotAcceptEvents="true" />
+                <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="CoverChildren" MarginLeft="6" MarginRight="6" MarginTop="6" MarginBottom="6" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+                  <Children>
+                    <!-- TR -->
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangTR">
+                      <Children>
+                        <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="24" SuggestedHeight="16" VerticalAlignment="Center" MarginRight="10" Sprite="BlankWhiteSquare_9" Color="#E30A17FF" DoNotAcceptEvents="true">
+                              <Children>
+                                <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="6" SuggestedHeight="7" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="4" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="4" SuggestedHeight="5" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="6" Sprite="BlankWhiteSquare_9" Color="#E30A17FF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="3" SuggestedHeight="3" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                              </Children>
+                            </Widget>
+                            <TextWidget WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="Türkçe" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ListPanel>
+                      </Children>
+                    </ButtonWidget>
+                    <!-- EN -->
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangEN">
+                      <Children>
+                        <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="24" SuggestedHeight="16" VerticalAlignment="Center" MarginRight="10" Sprite="BlankWhiteSquare_9" Color="#012169FF" DoNotAcceptEvents="true">
+                              <Children>
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="5" VerticalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="5" HorizontalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="3" VerticalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#C8102EFF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="3" HorizontalAlignment="Center" Sprite="BlankWhiteSquare_9" Color="#C8102EFF" DoNotAcceptEvents="true" />
+                              </Children>
+                            </Widget>
+                            <TextWidget WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="English" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ListPanel>
+                      </Children>
+                    </ButtonWidget>
+                    <!-- PL -->
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangPL">
+                      <Children>
+                        <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                          <Children>
+                            <ListPanel WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="24" SuggestedHeight="16" VerticalAlignment="Center" MarginRight="10" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+                              <Children>
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="8" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="8" Sprite="BlankWhiteSquare_9" Color="#DC143CFF" DoNotAcceptEvents="true" />
+                              </Children>
+                            </ListPanel>
+                            <TextWidget WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="Polski" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ListPanel>
+                      </Children>
+                    </ButtonWidget>
+                    <!-- DE -->
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangDE">
+                      <Children>
+                        <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                          <Children>
+                            <ListPanel WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="24" SuggestedHeight="16" VerticalAlignment="Center" MarginRight="10" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+                              <Children>
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="5" Sprite="BlankWhiteSquare_9" Color="#111111FF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="6" Sprite="BlankWhiteSquare_9" Color="#DD0000FF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="5" Sprite="BlankWhiteSquare_9" Color="#FFCE00FF" DoNotAcceptEvents="true" />
+                              </Children>
+                            </ListPanel>
+                            <TextWidget WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="Deutsch" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ListPanel>
+                      </Children>
+                    </ButtonWidget>
+                    <!-- RU -->
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangRU">
+                      <Children>
+                        <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                          <Children>
+                            <ListPanel WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="24" SuggestedHeight="16" VerticalAlignment="Center" MarginRight="10" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+                              <Children>
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="5" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="6" Sprite="BlankWhiteSquare_9" Color="#0039A6FF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="5" Sprite="BlankWhiteSquare_9" Color="#D52B1EFF" DoNotAcceptEvents="true" />
+                              </Children>
+                            </ListPanel>
+                            <TextWidget WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="Русский" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ListPanel>
+                      </Children>
+                    </ButtonWidget>
+                    <!-- FR -->
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangFR">
+                      <Children>
+                        <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                          <Children>
+                            <ListPanel WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="24" SuggestedHeight="16" VerticalAlignment="Center" MarginRight="10" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                              <Children>
+                                <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="8" Sprite="BlankWhiteSquare_9" Color="#0055A4FF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="8" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="8" Sprite="BlankWhiteSquare_9" Color="#EF4135FF" DoNotAcceptEvents="true" />
+                              </Children>
+                            </ListPanel>
+                            <TextWidget WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="Français" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ListPanel>
+                      </Children>
+                    </ButtonWidget>
+                    <!-- IT -->
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangIT">
+                      <Children>
+                        <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                          <Children>
+                            <ListPanel WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="24" SuggestedHeight="16" VerticalAlignment="Center" MarginRight="10" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                              <Children>
+                                <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="8" Sprite="BlankWhiteSquare_9" Color="#009246FF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="8" Sprite="BlankWhiteSquare_9" Color="#FFFFFFFF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="Fixed" HeightSizePolicy="StretchToParent" SuggestedWidth="8" Sprite="BlankWhiteSquare_9" Color="#CE2B37FF" DoNotAcceptEvents="true" />
+                              </Children>
+                            </ListPanel>
+                            <TextWidget WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="Italiano" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ListPanel>
+                      </Children>
+                    </ButtonWidget>
+                    <!-- ZH -->
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangZH">
+                      <Children>
+                        <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+                          <Children>
+                            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="24" SuggestedHeight="16" VerticalAlignment="Center" MarginRight="10" Sprite="BlankWhiteSquare_9" Color="#DE2910FF" DoNotAcceptEvents="true">
+                              <Children>
+                                <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="5" SuggestedHeight="5" HorizontalAlignment="Left" VerticalAlignment="Top" MarginLeft="3" MarginTop="2" Sprite="BlankWhiteSquare_9" Color="#FFDE00FF" DoNotAcceptEvents="true" />
+                                <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="2" SuggestedHeight="2" HorizontalAlignment="Left" VerticalAlignment="Top" MarginLeft="10" MarginTop="2" Sprite="BlankWhiteSquare_9" Color="#FFDE00FF" DoNotAcceptEvents="true" />
+                              </Children>
+                            </Widget>
+                            <TextWidget WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="15" Text="简体中文" DoNotAcceptEvents="true" />
+                          </Children>
+                        </ListPanel>
+                      </Children>
+                    </ButtonWidget>
+                  </Children>
+                </ListPanel>
+              </Children>
+            </Widget>
+          </Children>
+        </ListPanel>
+
+        <!-- ================================================================== -->
+        <!-- 4. BOTTOM-RIGHT FOOTER: Emeği Geçenler / GitHub (konasoglu)        -->
+        <!-- ================================================================== -->
+        <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Right" VerticalAlignment="Bottom" MarginRight="40" MarginBottom="28" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+          <Children>
+            <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="28" MarginBottom="6" HorizontalAlignment="Right" Brush="Popup.Description.Text" Brush.FontSize="17" Brush.TextHorizontalAlignment="Right" Text="@DeveloperFooterText" DoNotAcceptEvents="true" />
+
+            <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Right" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
+              <Children>
+                <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="210" SuggestedHeight="48" MarginRight="12" Brush="ButtonBrush2" Command.Click="ExecuteShowCredits">
+                  <Children>
+                    <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="17" Text="@CreditsButtonText" DoNotAcceptEvents="true" />
+                  </Children>
+                </ButtonWidget>
+
+                <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="180" SuggestedHeight="48" Brush="ButtonBrush1" Command.Click="ExecuteOpenGithub">
+                  <Children>
+                    <TextWidget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" HorizontalAlignment="Center" VerticalAlignment="Center" Brush="OverlayPopup.ButtonText" Brush.FontSize="17" Text="@GithubButtonText" DoNotAcceptEvents="true" />
+                  </Children>
+                </ButtonWidget>
+              </Children>
+            </ListPanel>
+          </Children>
+        </ListPanel>
+
+      </Children>
+    </Widget>
+  </Window>
+</Prefab>

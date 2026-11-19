@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <RootNamespace>CalradiaConnected.Mod</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Lib.Harmony" Version="2.3.3" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CalradiaConnected.Common\CalradiaConnected.Common.csproj" />
+    <ProjectReference Include="..\CalradiaConnected.Network\CalradiaConnected.Network.csproj" />
+    <ProjectReference Include="..\CalradiaConnected.Engine\CalradiaConnected.Engine.csproj" />
+    <ProjectReference Include="..\CalradiaConnected.Campaign\CalradiaConnected.Campaign.csproj" />
+    <ProjectReference Include="..\CalradiaConnected.Missions\CalradiaConnected.Missions.csproj" />
+  </ItemGroup>
+
+  <!-- Output copy target to local CalradiaConnected module & Bannerlord Modules directory -->
+  <Target Name="DeployToBannerlord" AfterTargets="Build">
+    <ItemGroup>
+      <ModOutputs Include="$(TargetDir)*.*" />
+      <GuiPrefabs Include="GUI\Prefabs\*.xml" />
+      <ModuleLangAll Include="ModuleData\Languages\**\*.xml" />
+    </ItemGroup>
+    <MakeDir Directories="..\..\CalradiaConnected\bin\Win64_Shipping_Client" />
+    <MakeDir Directories="..\..\CalradiaConnected\GUI\Prefabs" />
+    <Copy SourceFiles="@(ModOutputs)" DestinationFolder="..\..\CalradiaConnected\bin\Win64_Shipping_Client" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(GuiPrefabs)" DestinationFolder="..\..\CalradiaConnected\GUI\Prefabs" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="@(ModuleLangAll)" DestinationFiles="@(ModuleLangAll->'..\..\CalradiaConnected\ModuleData\Languages\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="false" />
+    <Copy SourceFiles="SubModule.xml" DestinationFolder="..\..\CalradiaConnected" SkipUnchangedFiles="false" Condition="Exists('SubModule.xml')" />
+
+    <MakeDir Directories="$(BannerlordTargetModule)" Condition="Exists('$(BannerlordModules)')" />
+    <MakeDir Directories="$(BannerlordModules)\CalradiaConnected\GUI\Prefabs" Condition="Exists('$(BannerlordModules)')" />
+    <Copy SourceFiles="@(ModOutputs)" DestinationFolder="$(BannerlordTargetModule)" SkipUnchangedFiles="true" Condition="Exists('$(BannerlordModules)')" />
+    <Copy SourceFiles="@(GuiPrefabs)" DestinationFolder="$(BannerlordModules)\CalradiaConnected\GUI\Prefabs" SkipUnchangedFiles="false" Condition="Exists('$(BannerlordModules)')" />
+    <Copy SourceFiles="@(ModuleLangAll)" DestinationFiles="@(ModuleLangAll->'$(BannerlordModules)\CalradiaConnected\ModuleData\Languages\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="false" Condition="Exists('$(BannerlordModules)')" />
+    <Copy SourceFiles="SubModule.xml" DestinationFolder="$(BannerlordModules)\CalradiaConnected" SkipUnchangedFiles="false" Condition="Exists('$(BannerlordModules)') And Exists('SubModule.xml')" />
+  </Target>
+</Project>
+

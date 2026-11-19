@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <RollForward>LatestMajor</RollForward>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <AssemblyTitle>Calradia Connected Server Manager</AssemblyTitle>
+    <Product>Calradia Connected</Product>
+    <Company>konasoglu</Company>
+    <Authors>konasoglu</Authors>
+    <Description>Desktop Server Manager for Calradia Connected multiplayer mod for Mount &amp; Blade II: Bannerlord.</Description>
+    <Copyright>MIT License - konasoglu</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CalradiaConnected.Common\CalradiaConnected.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="ServerCache\**">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+</Project>
+
