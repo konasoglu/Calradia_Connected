@@ -106,6 +106,8 @@ namespace CoopServerManager.ViewModels
 
         public ObservableCollection<LanguageOption> AvailableLanguages { get; } = new();
         private LanguageOption? selectedLanguage;
+        private bool isInitializing = true;
+        private bool languageManuallySet = false;
         public LanguageOption? SelectedLanguage
         {
             get => selectedLanguage;
@@ -115,11 +117,18 @@ namespace CoopServerManager.ViewModels
                 {
                     selectedLanguage = value;
                     OnPropertyChanged();
+                    if (!isInitializing)
+                    {
+                        languageManuallySet = true;
+                    }
                     if (!string.Equals(Loc.CurrentLanguage, value.Code, StringComparison.OrdinalIgnoreCase))
                     {
                         ServerManagerLoc.Instance.SetLanguage(value.Code);
                         NotifyLanguageChanged();
-                        SaveConfig();
+                        if (!isInitializing)
+                        {
+                            SaveConfig();
+                        }
                     }
                 }
             }
@@ -1091,6 +1100,7 @@ namespace CoopServerManager.ViewModels
 
             ToggleLanguageCommand = new RelayCommand(() =>
             {
+                languageManuallySet = true;
                 ServerManagerLoc.Instance.ToggleLanguage();
                 SyncSelectedLanguageFromLoc();
                 NotifyLanguageChanged();
@@ -1278,7 +1288,8 @@ namespace CoopServerManager.ViewModels
             logFlushTimer.Tick += (s, e) => FlushPendingLogs();
             logFlushTimer.Start();
 
-            // Default to the user's Windows system language on first run, then load saved config (if any)
+            // Always start in the user's Windows OS language unless they previously chose a manual override
+            isInitializing = true;
             Loc.SyncFromSystemCulture();
             foreach (var langOpt in FlagIconHelper.BuildLanguageOptions())
             {
@@ -1298,11 +1309,15 @@ namespace CoopServerManager.ViewModels
                 BannerlordPath = detectedDir;
             }
 
+            isInitializing = false;
             LoadSaves();
             ReloadUsers();
             _ = RefreshOnlinePlayersAsync();
             GitHubUpdateService.CleanupPreviousUpdateBackups();
-            AddLog($"Calradia-Connected Sunucu Yöneticisi hazır. Doğrudan Bağlantı IP: {GetPrimaryLocalIp()}:{ServerPort}");
+            AddLog(Loc.F(
+                "Calradia Connected Sunucu Yöneticisi hazır. Bağlantı IP: {0}:{1}",
+                "Calradia Connected Server Manager ready. Connect IP: {0}:{1}",
+                GetPrimaryLocalIp(), ServerPort));
             _ = CheckForUpdatesOnStartupAsync();
         }
 
@@ -2410,7 +2425,8 @@ namespace CoopServerManager.ViewModels
         {
             return new ServerConfig
             {
-                Language = Loc.CurrentLanguage,
+                Language = languageManuallySet ? Loc.CurrentLanguage : string.Empty,
+                LanguageManuallySet = languageManuallySet,
                 BannerlordPath = BannerlordPath,
                 ServerName = ServerName,
                 ServerPort = ServerPort,
@@ -2485,9 +2501,16 @@ namespace CoopServerManager.ViewModels
                 var cfg = JsonSerializer.Deserialize<ServerConfig>(json);
                 if (cfg != null)
                 {
-                    if (!string.IsNullOrWhiteSpace(cfg.Language))
+                    if (cfg.LanguageManuallySet && !string.IsNullOrWhiteSpace(cfg.Language))
                     {
+                        languageManuallySet = true;
                         ServerManagerLoc.Instance.SetLanguage(cfg.Language);
+                    }
+                    else
+                    {
+                        languageManuallySet = false;
+                        Loc.SyncFromSystemCulture();
+                        ServerManagerLoc.Instance.NotifyAll();
                     }
                     if (!string.IsNullOrWhiteSpace(cfg.BannerlordPath) && Directory.Exists(cfg.BannerlordPath))
                     {

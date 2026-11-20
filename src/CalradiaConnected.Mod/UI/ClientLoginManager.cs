@@ -331,7 +331,7 @@ namespace CalradiaConnected.Mod.UI
 
         private void SelectLanguageAndRefresh(string langCode)
         {
-            Loc.SetLanguage(langCode);
+            Loc.SetLanguageManually(langCode);
             IsLanguageMenuOpen = false;
             RefreshLocalizedProperties();
         }
@@ -901,6 +901,7 @@ namespace CalradiaConnected.Mod.UI
 
         public void PromptLogin(Action<string, int, string, string, string> onCredentialsReady)
         {
+            CalradiaConnectedSubModule.SyncLanguageFromBannerlord();
             _credentials = LoadCredentials();
             CloseOverlay();
 

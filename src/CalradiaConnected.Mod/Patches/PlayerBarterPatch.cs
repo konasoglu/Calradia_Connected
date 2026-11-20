@@ -20,10 +20,12 @@ namespace CalradiaConnected.Mod.Patches
     {
         private static readonly MethodInfo? ChangeBarterableIsOfferedMethod =
             typeof(BarterVM).GetMethod("ChangeBarterableIsOffered", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-        private static readonly MethodInfo? SendOfferMethod =
-            typeof(BarterVM).GetMethod("SendOffer", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
-        private static readonly MethodInfo? RefreshOfferLabelMethod =
-            typeof(BarterVM).GetMethod("RefreshOfferLabel", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+        private static readonly MethodInfo? OfferItemAddMethod =
+            typeof(BarterVM).GetMethod("OfferItemAdd", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+        private static readonly MethodInfo? OfferItemRemoveMethod =
+            typeof(BarterVM).GetMethod("OfferItemRemove", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+        private static readonly MethodInfo? RefreshResultBarMethod =
+            typeof(BarterVM).GetMethod("RefreshResultBar", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
         private static readonly MethodInfo? RefreshCompatibilityMethod =
             typeof(BarterVM).GetMethod("RefreshCompatibility", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
         private static readonly FieldInfo? BarterDataField =
@@ -101,12 +103,38 @@ namespace CalradiaConnected.Mod.Patches
         public static string EncodeLocalOfferedTokens(BarterVM vm) =>
             EncodeLocalOfferedTokens(BarterDataField?.GetValue(vm) as BarterData);
 
+        public static void SyncLocalOfferIfChanged(BarterVM vm)
+        {
+            if (IsActivePlayerBarter(vm) && !PlayerInteractionService.Instance.IsApplyingRemoteBarterSync)
+            {
+                string tokens = EncodeLocalOfferedTokens(vm);
+                PlayerInteractionService.Instance.NotifyLocalBarterOfferChanged(tokens);
+            }
+        }
+
+        public static void ApplyLiveButtonState(BarterVM vm)
+        {
+            if (vm == null || !IsActivePlayerBarter(vm)) return;
+            try
+            {
+                vm.OfferLbl = PlayerInteractionService.Instance.GetLiveBarterOfferButtonLabel();
+                bool hasAny = !string.IsNullOrEmpty(PlayerInteractionService.Instance.LiveBarterLocalTokens)
+                              || !string.IsNullOrEmpty(PlayerInteractionService.Instance.LiveBarterPartnerTokens)
+                              || ((BarterDataField?.GetValue(vm) as BarterData)?.GetOfferedBarterables().Count ?? 0) > 0;
+                vm.IsOfferDisabled = !hasAny;
+                vm.ResultBarOffererPercentage = 50;
+                vm.ResultBarOtherPercentage = 50;
+            }
+            catch { }
+        }
+
         public static void RefreshOfferLabel()
         {
             if (_activeVmRef == null || !_activeVmRef.TryGetTarget(out var vm)) return;
             try
             {
-                RefreshOfferLabelMethod?.Invoke(vm, null);
+                RefreshResultBarMethod?.Invoke(vm, null);
+                ApplyLiveButtonState(vm);
             }
             catch { }
         }
@@ -124,6 +152,7 @@ namespace CalradiaConnected.Mod.Patches
             }
 
             var desiredCounts = ParsePartnerOfferCounts(tokensCsv);
+            var matchedKeys = new HashSet<string>(StringComparer.Ordinal);
             PlayerInteractionService.Instance.IsApplyingRemoteBarterSync = true;
             try
             {
@@ -140,31 +169,93 @@ namespace CalradiaConnected.Mod.Patches
 
                             string? key = GetMatchKey(b);
                             int targetAmt = key != null && desiredCounts.TryGetValue(key, out int amt) ? amt : 0;
+                            if (key != null && targetAmt > 0)
+                            {
+                                matchedKeys.Add(key);
+                            }
 
+                            int currentAmt = (itemVm.IsOffered || b.IsOffered) ? Math.Max(0, itemVm.CurrentOfferedAmount) : 0;
                             if (targetAmt > 0)
                             {
-                                int clamped = Math.Max(1, Math.Min(targetAmt, itemVm.TotalItemCount > 0 ? itemVm.TotalItemCount : targetAmt));
-                                if (!b.IsOffered)
+                                if (b is GoldBarterable)
                                 {
-                                    ChangeBarterableIsOfferedMethod?.Invoke(vm, new object[] { b, true });
+                                    if (b.OriginalOwner != null && b.OriginalOwner.Gold < targetAmt)
+                                    {
+                                        b.OriginalOwner.Gold = targetAmt;
+                                    }
+                                    if (vm.LeftMaxGold < targetAmt)
+                                    {
+                                        vm.LeftMaxGold = targetAmt;
+                                    }
+                                    if (itemVm.TotalItemCount < targetAmt)
+                                    {
+                                        itemVm.TotalItemCount = targetAmt;
+                                    }
                                 }
+
+                                int maxAllowed = itemVm.TotalItemCount > 0 ? itemVm.TotalItemCount : targetAmt;
+                                int clamped = Math.Max(1, Math.Min(targetAmt, maxAllowed));
+
+                                if (clamped > currentAmt)
+                                {
+                                    if (OfferItemAddMethod != null)
+                                    {
+                                        OfferItemAddMethod.Invoke(vm, new object[] { itemVm, clamped - currentAmt });
+                                    }
+                                    else
+                                    {
+                                        if (!b.IsOffered) ChangeBarterableIsOfferedMethod?.Invoke(vm, new object[] { b, true });
+                                        if (itemVm.IsMultiple || b is GoldBarterable) itemVm.CurrentOfferedAmount = clamped;
+                                    }
+                                }
+                                else if (clamped < currentAmt)
+                                {
+                                    if (OfferItemRemoveMethod != null)
+                                    {
+                                        OfferItemRemoveMethod.Invoke(vm, new object[] { itemVm, currentAmt - clamped });
+                                    }
+                                    else if (itemVm.IsMultiple || b is GoldBarterable)
+                                    {
+                                        itemVm.CurrentOfferedAmount = clamped;
+                                    }
+                                }
+
                                 if (itemVm.IsMultiple || b is GoldBarterable)
                                 {
-                                    itemVm.CurrentOfferedAmount = clamped;
+                                    if (itemVm.CurrentOfferedAmount != clamped) itemVm.CurrentOfferedAmount = clamped;
+                                    if (b.CurrentAmount != clamped) b.CurrentAmount = clamped;
                                 }
                                 RefreshCompatibilityMethod?.Invoke(vm, new object[] { itemVm, true });
                             }
-                            else if (b.IsOffered)
+                            else if (itemVm.IsOffered || b.IsOffered)
                             {
-                                ChangeBarterableIsOfferedMethod?.Invoke(vm, new object[] { b, false });
+                                if (OfferItemRemoveMethod != null && currentAmt > 0)
+                                {
+                                    OfferItemRemoveMethod.Invoke(vm, new object[] { itemVm, currentAmt });
+                                }
+                                if (b.IsOffered)
+                                {
+                                    ChangeBarterableIsOfferedMethod?.Invoke(vm, new object[] { b, false });
+                                }
                                 RefreshCompatibilityMethod?.Invoke(vm, new object[] { itemVm, false });
                             }
                         }
                     }
                 }
 
-                SendOfferMethod?.Invoke(vm, null);
-                RefreshOfferLabelMethod?.Invoke(vm, null);
+                // If partner offered an item not yet present in our stale local snapshot, display exact summary in chat
+                if (desiredCounts.Count > matchedKeys.Count && !string.IsNullOrEmpty(tokensCsv))
+                {
+                    string partnerName = vm.LeftNameLbl ?? Loc.T("Oyuncu", "Partner");
+                    string myName = Hero.MainHero?.Name?.ToString() ?? Loc.T("Siz", "You");
+                    string summary = PlayerInteractionService.FormatLordBarterSummary(tokensCsv, perspectiveIsPartner: false, myName, partnerName);
+                    InformationManager.DisplayMessage(new InformationMessage(
+                        Loc.F("[Ticaret] Karşı teklif güncellendi: {0}", "[Trade] Partner offer updated: {0}", summary),
+                        Colors.Cyan));
+                }
+
+                RefreshResultBarMethod?.Invoke(vm, null);
+                ApplyLiveButtonState(vm);
             }
             catch (Exception ex)
             {
@@ -289,7 +380,9 @@ namespace CalradiaConnected.Mod.Patches
 
             if (ModContext.IsClientConnected && isPlayerTarget)
             {
-                __result = args != null && args.GetOfferedBarterables().Count > 0;
+                __result = (args != null && args.GetOfferedBarterables().Count > 0)
+                           || !string.IsNullOrEmpty(PlayerInteractionService.Instance.LiveBarterLocalTokens)
+                           || !string.IsNullOrEmpty(PlayerInteractionService.Instance.LiveBarterPartnerTokens);
                 return false;
             }
             return true;
@@ -396,6 +489,12 @@ namespace CalradiaConnected.Mod.Patches
         {
             return LiveBarterUIBridge.GuardPartnerEdit(__instance, item);
         }
+
+        [HarmonyPostfix]
+        public static void Postfix(BarterVM __instance)
+        {
+            LiveBarterUIBridge.SyncLocalOfferIfChanged(__instance);
+        }
     }
 
     [HarmonyPatch(typeof(BarterVM), "OfferItemAdd")]
@@ -406,6 +505,12 @@ namespace CalradiaConnected.Mod.Patches
         {
             return LiveBarterUIBridge.GuardPartnerEdit(__instance, barterItemVM);
         }
+
+        [HarmonyPostfix]
+        public static void Postfix(BarterVM __instance)
+        {
+            LiveBarterUIBridge.SyncLocalOfferIfChanged(__instance);
+        }
     }
 
     [HarmonyPatch(typeof(BarterVM), "OfferItemRemove")]
@@ -415,6 +520,12 @@ namespace CalradiaConnected.Mod.Patches
         public static bool Prefix(BarterVM __instance, BarterItemVM barterItemVM)
         {
             return LiveBarterUIBridge.GuardPartnerEdit(__instance, barterItemVM);
+        }
+
+        [HarmonyPostfix]
+        public static void Postfix(BarterVM __instance)
+        {
+            LiveBarterUIBridge.SyncLocalOfferIfChanged(__instance);
         }
     }
 
@@ -561,7 +672,7 @@ namespace CalradiaConnected.Mod.Patches
         {
             if (LiveBarterUIBridge.IsActivePlayerBarter(__instance))
             {
-                __instance.OfferLbl = PlayerInteractionService.Instance.GetLiveBarterOfferButtonLabel();
+                LiveBarterUIBridge.ApplyLiveButtonState(__instance);
             }
         }
     }

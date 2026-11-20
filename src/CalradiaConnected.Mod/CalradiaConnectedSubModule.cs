@@ -88,13 +88,82 @@ namespace CalradiaConnected.Mod
             _newGameSaveRequested = true;
         }
 
+        public static void SyncLanguageFromBannerlord(bool force = false)
+        {
+            if (!force && Loc.IsManuallyOverridden) return;
+            try
+            {
+                string? active = null;
+                try { active = MBTextManager.ActiveTextLanguage; } catch { }
+                string? cfgLang = null;
+                try { cfgLang = BannerlordConfig.Language; } catch { }
+                string? diskLang = TryReadBannerlordConfigLanguageFromDisk();
+
+                // During OnSubModuleLoad, BannerlordConfig.Language & MBTextManager.ActiveTextLanguage can still be default "English"
+                // before Bannerlord finishes reading BannerlordConfig.txt. Prefer non-default live language, then disk config.
+                if (!string.IsNullOrWhiteSpace(active) && !string.Equals(active, "English", StringComparison.OrdinalIgnoreCase))
+                {
+                    Loc.SyncFromBannerlordLanguage(active);
+                    return;
+                }
+                if (!string.IsNullOrWhiteSpace(cfgLang) && !string.Equals(cfgLang, "English", StringComparison.OrdinalIgnoreCase))
+                {
+                    Loc.SyncFromBannerlordLanguage(cfgLang);
+                    return;
+                }
+                if (!string.IsNullOrWhiteSpace(diskLang))
+                {
+                    Loc.SyncFromBannerlordLanguage(diskLang);
+                    return;
+                }
+                if (!string.IsNullOrWhiteSpace(active))
+                {
+                    Loc.SyncFromBannerlordLanguage(active);
+                    return;
+                }
+                if (!string.IsNullOrWhiteSpace(cfgLang))
+                {
+                    Loc.SyncFromBannerlordLanguage(cfgLang);
+                    return;
+                }
+                Loc.SyncFromSystemCulture();
+            }
+            catch { }
+        }
+
+        private static string? TryReadBannerlordConfigLanguageFromDisk()
+        {
+            try
+            {
+                string cfgPath = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                    "Mount and Blade II Bannerlord",
+                    "Configs",
+                    "BannerlordConfig.txt");
+                if (!File.Exists(cfgPath)) return null;
+
+                foreach (string raw in File.ReadAllLines(cfgPath))
+                {
+                    if (string.IsNullOrWhiteSpace(raw)) continue;
+                    string line = raw.Trim();
+                    if (line.StartsWith("Language=", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string val = line.Substring("Language=".Length).Trim();
+                        if (!string.IsNullOrEmpty(val)) return val;
+                    }
+                }
+            }
+            catch { }
+            return null;
+        }
+
         protected override void OnSubModuleLoad()
         {
             base.OnSubModuleLoad();
 
             try
             {
-                try { Loc.SyncFromBannerlordLanguage(BannerlordConfig.Language); } catch { }
+                SyncLanguageFromBannerlord();
 
                 // Parse command line arguments
                 var args = Environment.GetCommandLineArgs();
@@ -745,6 +814,7 @@ namespace CalradiaConnected.Mod
         {
             base.OnBeforeInitialModuleScreenSetAsRoot();
 
+            SyncLanguageFromBannerlord();
             EnsureHarmonyPatchesInstalled();
 
             if (_isServerProcess)
@@ -864,11 +934,11 @@ namespace CalradiaConnected.Mod
 
         private void RegisterMainMenuOption()
         {
+            SyncLanguageFromBannerlord();
             if (_menuOptionRegistered) return;
 
             try
             {
-                try { Loc.SyncFromBannerlordLanguage(BannerlordConfig.Language); } catch { }
                 var joinOption = new InitialStateOption(
                     "CalradiaConnectedJoin",
                     new TextObject("{=cc_join_calradia}" + Loc.T("Kalradya'ya Katıl", "Join Calradia")),
@@ -1633,6 +1703,7 @@ namespace CalradiaConnected.Mod
         protected override void InitializeGameStarter(Game game, IGameStarter starterObject)
         {
             base.InitializeGameStarter(game, starterObject);
+            SyncLanguageFromBannerlord();
 
             if (starterObject is CampaignGameStarter campaignStarter)
             {

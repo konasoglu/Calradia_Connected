@@ -4,8 +4,9 @@ namespace CoopServerManager.Models
 {
     public class ServerConfig
     {
-        // Arayüz Dili (Boşsa ilk açılışta sistem diline göre otomatik seçilir)
+        // Arayüz Dili (Boşsa veya LanguageManuallySet=false ise sistem diline göre otomatik açılır)
         public string Language { get; set; } = string.Empty;
+        public bool LanguageManuallySet { get; set; } = false;
 
         // Temel Sunucu & Dizin Bilgileri
         public string BannerlordPath { get; set; } = string.Empty;

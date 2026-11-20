@@ -1645,6 +1645,42 @@ namespace CalradiaConnected.Verification
             Console.WriteLine($"[29/29] Deferred Harmony (Fix Sideways CharCreation/Inventory Models) & 8-Lang ServerManager Troops/Dropdowns (DeferredHarmony={deferredHarmonyOk}, Dropdowns8Lang={eightLangDropdownsOk}) -> {(v1115HotfixPass ? "PASS" : "FAIL")}");
             if (!v1115HotfixPass) failures++;
 
+            // 30. Responder 3D Speech Bubble Reply, Game/OS Language Auto-Sync, Compact Login Flag Dropdown & Live Barter Sync Fixes
+            bool dialogReplyOk = false;
+            bool langAutoSyncAndUiOk = false;
+            bool tradeSyncFixesOk = false;
+            {
+                string pisSrc30 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Campaign", "Services", "PlayerInteractionService.cs"));
+                string barterSrc30 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Mod", "Patches", "PlayerBarterPatch.cs"));
+                string rosterSrc30 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Campaign", "Services", "RosterSyncService.cs"));
+                string subModSrc30 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Mod", "CalradiaConnectedSubModule.cs"));
+                string loginXml30 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Mod", "GUI", "Prefabs", "CalradiaConnectedLogin.xml"));
+                string smAppSrc30 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.ServerManager", "App.xaml.cs"));
+                string smVmSrc30 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.ServerManager", "ViewModels", "MainViewModel.cs"));
+
+                dialogReplyOk = pisSrc30.Contains("packet.OptionKey == \"reply\" || packet.OptionKey == \"custom_line\"")
+                    && pisSrc30.Contains("CurrentConversationSpeech = $\"[{myName}]: {trimmed}\"");
+
+                langAutoSyncAndUiOk = subModSrc30.Contains("SyncLanguageFromBannerlord")
+                    && subModSrc30.Contains("TryReadBannerlordConfigLanguageFromDisk")
+                    && subModSrc30.Contains("MBTextManager.ActiveTextLanguage")
+                    && loginXml30.Contains("SuggestedHeight=\"306\"")
+                    && smAppSrc30.Contains("Loc.SyncFromSystemCulture()")
+                    && smVmSrc30.Contains("cfg.LanguageManuallySet");
+
+                tradeSyncFixesOk = barterSrc30.Contains("OfferItemAddMethod")
+                    && barterSrc30.Contains("OfferItemRemoveMethod")
+                    && barterSrc30.Contains("RefreshResultBarMethod")
+                    && barterSrc30.Contains("ApplyLiveButtonState")
+                    && barterSrc30.Contains("SyncLocalOfferIfChanged")
+                    && pisSrc30.Contains("existingKeys.Contains(key)")
+                    && !rosterSrc30.Contains("party.ItemRoster.AddToCounts(DefaultItems.Grain, 50)");
+            }
+
+            bool v1116Pass = dialogReplyOk && langAutoSyncAndUiOk && tradeSyncFixesOk;
+            Console.WriteLine($"[30/30] Responder Speech Bubble, Game/OS Language Sync, Fixed Login Dropdown & Trade Sync Fixes (Reply={dialogReplyOk}, LangUI={langAutoSyncAndUiOk}, Trade={tradeSyncFixesOk}) -> {(v1116Pass ? "PASS" : "FAIL")}");
+            if (!v1116Pass) failures++;
+
             return failures;
         }
     }

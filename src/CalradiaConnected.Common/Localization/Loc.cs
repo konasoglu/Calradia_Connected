@@ -13,9 +13,11 @@ namespace CalradiaConnected.Common.Localization
     {
         public static readonly string[] SupportedLanguages = { "TR", "EN", "PL", "DE", "RU", "FR", "IT", "ZH" };
 
-        private static string _currentLanguage = "TR";
+        private static string _currentLanguage = "EN";
+        private static bool _isManuallyOverridden;
 
         public static string CurrentLanguage => _currentLanguage;
+        public static bool IsManuallyOverridden => _isManuallyOverridden;
         public static bool IsTurkish => string.Equals(_currentLanguage, "TR", StringComparison.OrdinalIgnoreCase);
         public static bool IsEnglish => string.Equals(_currentLanguage, "EN", StringComparison.OrdinalIgnoreCase);
 
@@ -49,23 +51,45 @@ namespace CalradiaConnected.Common.Localization
             }
         }
 
+        public static void SetLanguageManually(string? lang)
+        {
+            _isManuallyOverridden = true;
+            SetLanguage(lang);
+        }
+
         public static void ToggleLanguage()
         {
             int idx = Array.IndexOf(SupportedLanguages, _currentLanguage);
             int next = (idx < 0 ? 0 : (idx + 1) % SupportedLanguages.Length);
-            SetLanguage(SupportedLanguages[next]);
+            SetLanguageManually(SupportedLanguages[next]);
         }
 
         public static void SyncFromSystemCulture()
         {
             try
             {
-                string iso = CultureInfo.CurrentUICulture?.TwoLetterISOLanguageName ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(iso))
+                try { CultureInfo.CurrentUICulture?.ClearCachedData(); } catch { }
+
+                string?[] candidates =
                 {
-                    iso = CultureInfo.InstalledUICulture?.TwoLetterISOLanguageName ?? "en";
+                    CultureInfo.CurrentUICulture?.Name,
+                    CultureInfo.CurrentUICulture?.TwoLetterISOLanguageName,
+                    CultureInfo.InstalledUICulture?.Name,
+                    CultureInfo.InstalledUICulture?.TwoLetterISOLanguageName,
+                    CultureInfo.CurrentCulture?.Name,
+                    CultureInfo.CurrentCulture?.TwoLetterISOLanguageName
+                };
+
+                foreach (var candidate in candidates)
+                {
+                    if (string.IsNullOrWhiteSpace(candidate)) continue;
+                    string trimmed = candidate!.Trim();
+                    if (string.Equals(trimmed, "iv", StringComparison.OrdinalIgnoreCase)) continue;
+                    SetLanguage(MapIsoOrName(trimmed));
+                    return;
                 }
-                SetLanguage(MapIsoOrName(iso));
+
+                SetLanguage("EN");
             }
             catch
             {
@@ -84,32 +108,44 @@ namespace CalradiaConnected.Common.Localization
             string s = raw.Trim();
             if (s.IndexOf("Türk", StringComparison.OrdinalIgnoreCase) >= 0 ||
                 s.IndexOf("Turk", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                s.Equals("tr", StringComparison.OrdinalIgnoreCase))
+                s.Equals("tr", StringComparison.OrdinalIgnoreCase) ||
+                s.StartsWith("tr-", StringComparison.OrdinalIgnoreCase) ||
+                s.StartsWith("tr_", StringComparison.OrdinalIgnoreCase))
                 return "TR";
 
             if (s.IndexOf("Polsk", StringComparison.OrdinalIgnoreCase) >= 0 ||
                 s.IndexOf("Polish", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                s.Equals("pl", StringComparison.OrdinalIgnoreCase))
+                s.Equals("pl", StringComparison.OrdinalIgnoreCase) ||
+                s.StartsWith("pl-", StringComparison.OrdinalIgnoreCase) ||
+                s.StartsWith("pl_", StringComparison.OrdinalIgnoreCase))
                 return "PL";
 
             if (s.IndexOf("Deutsch", StringComparison.OrdinalIgnoreCase) >= 0 ||
                 s.IndexOf("German", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                s.Equals("de", StringComparison.OrdinalIgnoreCase))
+                s.Equals("de", StringComparison.OrdinalIgnoreCase) ||
+                s.StartsWith("de-", StringComparison.OrdinalIgnoreCase) ||
+                s.StartsWith("de_", StringComparison.OrdinalIgnoreCase))
                 return "DE";
 
             if (s.IndexOf("Русск", StringComparison.OrdinalIgnoreCase) >= 0 ||
                 s.IndexOf("Russ", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                s.Equals("ru", StringComparison.OrdinalIgnoreCase))
+                s.Equals("ru", StringComparison.OrdinalIgnoreCase) ||
+                s.StartsWith("ru-", StringComparison.OrdinalIgnoreCase) ||
+                s.StartsWith("ru_", StringComparison.OrdinalIgnoreCase))
                 return "RU";
 
             if (s.IndexOf("Franç", StringComparison.OrdinalIgnoreCase) >= 0 ||
                 s.IndexOf("Franc", StringComparison.OrdinalIgnoreCase) >= 0 ||
                 s.IndexOf("French", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                s.Equals("fr", StringComparison.OrdinalIgnoreCase))
+                s.Equals("fr", StringComparison.OrdinalIgnoreCase) ||
+                s.StartsWith("fr-", StringComparison.OrdinalIgnoreCase) ||
+                s.StartsWith("fr_", StringComparison.OrdinalIgnoreCase))
                 return "FR";
 
             if (s.IndexOf("Ital", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                s.Equals("it", StringComparison.OrdinalIgnoreCase))
+                s.Equals("it", StringComparison.OrdinalIgnoreCase) ||
+                s.StartsWith("it-", StringComparison.OrdinalIgnoreCase) ||
+                s.StartsWith("it_", StringComparison.OrdinalIgnoreCase))
                 return "IT";
 
             if (s.IndexOf("中文", StringComparison.OrdinalIgnoreCase) >= 0 ||

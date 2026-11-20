@@ -769,7 +769,10 @@ namespace CalradiaConnected.Campaign.Services
             int partnerId = GetActivePartnerPeerId();
             var partnerHero = NetworkObjectRegistry.Instance.ResolvePlayerHero(partnerId);
             string partnerName = partnerHero?.Name?.ToString() ?? Loc.F("Oyuncu #{0}", "Player #{0}", partnerId);
+            int myPeerId = ModContext.Client?.LocalPeerId ?? 1001;
+            string myName = Hero.MainHero?.Name?.ToString() ?? Loc.F("Oyuncu #{0}", "Player #{0}", myPeerId);
 
+            SuspendDialogForInquiryRequested?.Invoke();
             InformationManager.ShowTextInquiry(new TextInquiryData(
                 titleText: Loc.T("Diyalog Yanıtı", "Dialog Reply"),
                 text: Loc.F("'{0}' oyuncusuna canlı diyalog yanıtınızı yazın:", "Write your live dialog reply to '{0}':", partnerName),
@@ -779,10 +782,27 @@ namespace CalradiaConnected.Campaign.Services
                 negativeText: Loc.T("Vazgeç", "Cancel"),
                 affirmativeAction: (text) =>
                 {
+                    ResumeDialogAfterInquiryRequested?.Invoke();
                     if (string.IsNullOrWhiteSpace(text)) return;
-                    SendNativeResponsePacket("reply", text.Trim());
+                    string trimmed = text!.Trim();
+
+                    CurrentConversationSpeech = $"[{myName}]: {trimmed}";
+                    RefreshActiveNativeConversation();
+
+                    SendDialogPacket(new P2PDialogPacket
+                    {
+                        SessionId = ActiveSessionId,
+                        InitiatorPeerId = ActiveInitiatorPeerId,
+                        TargetPeerId = ActiveTargetPeerId,
+                        SenderPeerId = myPeerId,
+                        SenderName = myName,
+                        Stage = 2,
+                        OptionKey = "custom_line",
+                        SpeakerName = myName,
+                        DialogText = trimmed
+                    });
                 },
-                negativeAction: null,
+                negativeAction: () => { ResumeDialogAfterInquiryRequested?.Invoke(); },
                 shouldInputBeObfuscated: false,
                 defaultInputText: Loc.T("Seni dinliyorum yoldaş!", "I hear you, comrade!")));
         }
@@ -1197,17 +1217,31 @@ namespace CalradiaConnected.Campaign.Services
         {
             if (ownerParty?.ItemRoster == null || ownerHero == null || otherHero == null) return;
 
+            var existingKeys = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var existing in args.GetBarterables())
+            {
+                if (existing is ItemBarterable ib && ib.OriginalOwner == ownerHero && ib.ItemRosterElement.EquipmentElement.Item != null)
+                {
+                    var eq = ib.ItemRosterElement.EquipmentElement;
+                    string k = eq.ItemModifier != null ? $"{eq.Item.StringId}@{eq.ItemModifier.StringId}" : eq.Item.StringId;
+                    existingKeys.Add(k);
+                }
+            }
+
             for (int i = 0; i < ownerParty.ItemRoster.Count; i++)
             {
                 var elem = ownerParty.ItemRoster.GetElementCopyAtIndex(i);
                 if (elem.Amount <= 0 || elem.EquipmentElement.Item == null) continue;
-                int baseVal = elem.EquipmentElement.GetBaseValue();
-                if (baseVal > 100) continue; // Already added by native ItemBarterBehavior
 
-                int avgVal = Math.Max(1, baseVal);
+                var eq = elem.EquipmentElement;
+                string key = eq.ItemModifier != null ? $"{eq.Item.StringId}@{eq.ItemModifier.StringId}" : eq.Item.StringId;
+                if (existingKeys.Contains(key)) continue;
+
+                int baseVal = Math.Max(1, eq.GetBaseValue());
                 args.AddBarterable<ItemBarterGroup>(
-                    new ItemBarterable(ownerHero, otherHero, ownerParty, otherParty, elem, avgVal),
+                    new ItemBarterable(ownerHero, otherHero, ownerParty, otherParty, elem, baseVal),
                     false);
+                existingKeys.Add(key);
             }
         }
 
@@ -1766,19 +1800,64 @@ namespace CalradiaConnected.Campaign.Services
 
                 bool affectsMeAsGiver = (iAmProposer && fromProposer) || (!iAmProposer && !fromProposer);
                 int sign = affectsMeAsGiver ? -1 : +1;
+                var remoteHero = iAmProposer ? partnerHero : proposerHero;
+                var remoteParty = iAmProposer ? partnerParty : proposerParty;
 
-                if (kind == "G" && int.TryParse(parts[2], out int gold) && gold > 0 && Hero.MainHero != null)
+                if (kind == "G" && int.TryParse(parts[2], out int gold) && gold > 0)
                 {
-                    Hero.MainHero.Gold = Math.Max(0, Hero.MainHero.Gold + (gold * sign));
+                    if (Hero.MainHero != null)
+                    {
+                        Hero.MainHero.Gold = Math.Max(0, Hero.MainHero.Gold + (gold * sign));
+                    }
+                    if (remoteHero != null && remoteHero != Hero.MainHero)
+                    {
+                        remoteHero.Gold = Math.Max(0, remoteHero.Gold - (gold * sign));
+                        if (remoteParty != null)
+                        {
+                            remoteParty.PartyTradeGold = remoteHero.Gold;
+                        }
+                    }
                 }
-                else if (kind == "T" && parts.Length >= 4 && int.TryParse(parts[3], out int amt) && amt > 0 && MobileParty.MainParty?.ItemRoster != null)
+                else if (kind == "T" && parts.Length >= 4 && int.TryParse(parts[3], out int amt) && amt > 0)
                 {
                     string[] ip = parts[2].Split('@');
                     var item = om.GetObject<ItemObject>(ip[0]);
                     var mod = ip.Length > 1 && !string.IsNullOrEmpty(ip[1]) ? om.GetObject<ItemModifier>(ip[1]) : null;
                     if (item != null)
                     {
-                        MobileParty.MainParty.ItemRoster.AddToCounts(new EquipmentElement(item, mod), amt * sign);
+                        var eq = new EquipmentElement(item, mod);
+                        if (MobileParty.MainParty?.ItemRoster != null)
+                        {
+                            if (sign > 0)
+                            {
+                                MobileParty.MainParty.ItemRoster.AddToCounts(eq, amt);
+                            }
+                            else
+                            {
+                                int idx = MobileParty.MainParty.ItemRoster.FindIndexOfElement(eq);
+                                int avail = idx >= 0 ? MobileParty.MainParty.ItemRoster.GetElementNumber(idx) : 0;
+                                if (avail > 0)
+                                {
+                                    MobileParty.MainParty.ItemRoster.AddToCounts(eq, -Math.Min(avail, amt));
+                                }
+                            }
+                        }
+                        if (remoteParty != null && remoteParty != MobileParty.MainParty && remoteParty.ItemRoster != null)
+                        {
+                            if (sign < 0)
+                            {
+                                remoteParty.ItemRoster.AddToCounts(eq, amt);
+                            }
+                            else
+                            {
+                                int rIdx = remoteParty.ItemRoster.FindIndexOfElement(eq);
+                                int rAvail = rIdx >= 0 ? remoteParty.ItemRoster.GetElementNumber(rIdx) : 0;
+                                if (rAvail > 0)
+                                {
+                                    remoteParty.ItemRoster.AddToCounts(eq, -Math.Min(rAvail, amt));
+                                }
+                            }
+                        }
                     }
                 }
                 else if (kind == "R" && !affectsMeAsGiver)
@@ -2185,19 +2264,24 @@ namespace CalradiaConnected.Campaign.Services
                             return;
                         }
 
-                        if (packet.Stage == 15) // LiveBarterOpen -> Reset/Create session and ensure BOTH sides open BarterVM
+                        if (packet.Stage == 15) // LiveBarterOpen -> Create session (or reuse existing active session for same pair) and ensure BOTH sides open BarterVM
                         {
                             if (string.IsNullOrEmpty(packet.SessionId) || packet.InitiatorPeerId <= 0 || packet.TargetPeerId <= 0 || packet.InitiatorPeerId == packet.TargetPeerId)
                             {
                                 return;
                             }
 
-                            _serverLiveBarters[packet.SessionId] = new ServerLiveBarterSession
+                            if (!_serverLiveBarters.TryGetValue(packet.SessionId, out var existingLive) ||
+                                !((existingLive.InitiatorPeerId == packet.InitiatorPeerId && existingLive.TargetPeerId == packet.TargetPeerId) ||
+                                  (existingLive.InitiatorPeerId == packet.TargetPeerId && existingLive.TargetPeerId == packet.InitiatorPeerId)))
                             {
-                                SessionId = packet.SessionId,
-                                InitiatorPeerId = packet.InitiatorPeerId,
-                                TargetPeerId = packet.TargetPeerId
-                            };
+                                _serverLiveBarters[packet.SessionId] = new ServerLiveBarterSession
+                                {
+                                    SessionId = packet.SessionId,
+                                    InitiatorPeerId = packet.InitiatorPeerId,
+                                    TargetPeerId = packet.TargetPeerId
+                                };
+                            }
 
                             if (initParty != null)
                             {
@@ -3106,6 +3190,24 @@ namespace CalradiaConnected.Campaign.Services
                                 };
                                 ModContext.Server?.SendTo(packet.InitiatorPeerId, followUp, LiteNetLib.DeliveryMethod.ReliableOrdered);
                                 ModContext.Server?.SendTo(packet.TargetPeerId, followUp, LiteNetLib.DeliveryMethod.ReliableOrdered);
+                                return;
+                            }
+                            else if (packet.OptionKey == "reply" || packet.OptionKey == "custom_line")
+                            {
+                                var replyPacket = new P2PDialogPacket
+                                {
+                                    SessionId = packet.SessionId,
+                                    InitiatorPeerId = packet.InitiatorPeerId,
+                                    TargetPeerId = packet.TargetPeerId,
+                                    SenderPeerId = packet.SenderPeerId,
+                                    SenderName = responderName,
+                                    Stage = 2,
+                                    OptionKey = "custom_line",
+                                    SpeakerName = responderName,
+                                    DialogText = packet.DialogText ?? string.Empty
+                                };
+                                ModContext.Server?.SendTo(packet.InitiatorPeerId, replyPacket, LiteNetLib.DeliveryMethod.ReliableOrdered);
+                                ModContext.Server?.SendTo(packet.TargetPeerId, replyPacket, LiteNetLib.DeliveryMethod.ReliableOrdered);
                                 return;
                             }
                             else
@@ -4272,6 +4374,9 @@ namespace CalradiaConnected.Campaign.Services
                             string trimmed = msg!.Trim();
                             if (!string.IsNullOrEmpty(dialogSessionId))
                             {
+                                CurrentConversationSpeech = $"[{senderName}]: {trimmed}";
+                                RefreshActiveNativeConversation();
+
                                 SendDialogPacket(new P2PDialogPacket
                                 {
                                     SessionId = dialogSessionId,

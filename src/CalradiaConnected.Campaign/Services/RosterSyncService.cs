@@ -312,12 +312,6 @@ namespace CalradiaConnected.Campaign.Services
                     ApplyPartyItems(party, packet.ItemsCsv);
                 }
 
-                // Ensure puppet party on server always has basic food so it doesn't starve
-                if (ModContext.IsServerRunning && DefaultItems.Grain != null && party.ItemRoster.GetItemNumber(DefaultItems.Grain) < 10)
-                {
-                    party.ItemRoster.AddToCounts(DefaultItems.Grain, 50);
-                }
-
                 party.Party?.SetLevelMaskIsDirty();
                 if (equipChanged)
                 {
@@ -365,6 +359,17 @@ namespace CalradiaConnected.Campaign.Services
             if (roster == null) return packet.TotalHealthy + packet.TotalWounded > 0;
 
             if (roster.TotalHealthyCount != packet.TotalHealthy || roster.TotalWounded != packet.TotalWounded)
+            {
+                return true;
+            }
+
+            if (party.LeaderHero != null && party.LeaderHero.Gold != Math.Max(0, packet.HeroGold))
+            {
+                return true;
+            }
+
+            if (!string.IsNullOrEmpty(packet.ItemsCsv) &&
+                !string.Equals(SerializePartyItems(party), packet.ItemsCsv, StringComparison.Ordinal))
             {
                 return true;
             }

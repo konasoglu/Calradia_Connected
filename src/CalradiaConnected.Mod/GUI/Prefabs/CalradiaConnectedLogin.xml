@@ -321,14 +321,14 @@
               </Children>
             </ButtonWidget>
 
-            <!-- Dropdown Panel: All 8 Languages with Crisp Visible Flags -->
-            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="CoverChildren" SuggestedWidth="200" MarginTop="4" Sprite="BlankWhiteSquare_9" Color="#111318F5" IsVisible="@IsLanguageMenuOpen" DoNotAcceptEvents="true">
+            <!-- Dropdown Panel: Fixed exact height prevents Gauntlet StretchToParent border from overflowing downward -->
+            <Widget WidthSizePolicy="Fixed" HeightSizePolicy="Fixed" SuggestedWidth="200" SuggestedHeight="306" MarginTop="4" Sprite="BlankWhiteSquare_9" Color="#111318F5" IsVisible="@IsLanguageMenuOpen" DoNotAcceptEvents="true">
               <Children>
                 <Widget WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" Sprite="WhiteFrame_9" Color="#C89B3CFF" IsEnabled="false" DoNotAcceptEvents="true" />
-                <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="CoverChildren" MarginLeft="6" MarginRight="6" MarginTop="6" MarginBottom="6" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
+                <ListPanel WidthSizePolicy="StretchToParent" HeightSizePolicy="StretchToParent" MarginLeft="6" MarginRight="6" MarginTop="6" MarginBottom="6" StackLayout.LayoutMethod="VerticalTopToBottom" DoNotAcceptEvents="true">
                   <Children>
                     <!-- TR -->
-                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangTR">
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="34" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangTR">
                       <Children>
                         <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
                           <Children>
@@ -345,7 +345,7 @@
                       </Children>
                     </ButtonWidget>
                     <!-- EN -->
-                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangEN">
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="34" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangEN">
                       <Children>
                         <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
                           <Children>
@@ -363,7 +363,7 @@
                       </Children>
                     </ButtonWidget>
                     <!-- PL -->
-                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangPL">
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="34" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangPL">
                       <Children>
                         <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
                           <Children>
@@ -379,7 +379,7 @@
                       </Children>
                     </ButtonWidget>
                     <!-- DE -->
-                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangDE">
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="34" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangDE">
                       <Children>
                         <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
                           <Children>
@@ -396,7 +396,7 @@
                       </Children>
                     </ButtonWidget>
                     <!-- RU -->
-                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangRU">
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="34" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangRU">
                       <Children>
                         <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
                           <Children>
@@ -413,7 +413,7 @@
                       </Children>
                     </ButtonWidget>
                     <!-- FR -->
-                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangFR">
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="34" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangFR">
                       <Children>
                         <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
                           <Children>
@@ -430,7 +430,7 @@
                       </Children>
                     </ButtonWidget>
                     <!-- IT -->
-                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangIT">
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="34" MarginBottom="3" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangIT">
                       <Children>
                         <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
                           <Children>
@@ -447,7 +447,7 @@
                       </Children>
                     </ButtonWidget>
                     <!-- ZH -->
-                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="36" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangZH">
+                    <ButtonWidget DoNotPassEventsToChildren="true" WidthSizePolicy="StretchToParent" HeightSizePolicy="Fixed" SuggestedHeight="34" Brush="ButtonBrush1" Command.Click="ExecuteSelectLangZH">
                       <Children>
                         <ListPanel WidthSizePolicy="CoverChildren" HeightSizePolicy="CoverChildren" HorizontalAlignment="Left" VerticalAlignment="Center" MarginLeft="12" StackLayout.LayoutMethod="HorizontalLeftToRight" DoNotAcceptEvents="true">
                           <Children>

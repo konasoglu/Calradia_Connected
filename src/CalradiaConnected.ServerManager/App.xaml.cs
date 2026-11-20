@@ -1,6 +1,5 @@
-﻿using System.Configuration;
-using System.Data;
-using System.Windows;
+﻿using System.Windows;
+using CalradiaConnected.Common.Localization;
 
 namespace CoopServerManager;
 
@@ -9,5 +8,11 @@ namespace CoopServerManager;
 /// </summary>
 public partial class App : Application
 {
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        // Sync language with Windows OS culture before MainWindow & MainViewModel are constructed
+        Loc.SyncFromSystemCulture();
+        base.OnStartup(e);
+    }
 }
 
