@@ -19,15 +19,23 @@ namespace CalradiaConnected.Campaign.Sync
         private float _lastSnapshotBroadcastTime = 0f;
         private const float SNAPSHOT_INTERVAL_SEC = 0.10f; // 10 Hz authoritative sync
         private const int MAX_PARTIES_PER_PACKET = 12; // ~550 bytes per UDP packet (strictly below LiteNetLib Unreliable MTU)
-        private const int ROLLING_REFRESH_PER_TICK = 18;
+        private const int ROLLING_REFRESH_PER_TICK = 24;
+        private const int WORLD_RECONCILE_PER_TICK = 10; // Reconciles all ~500 world AI parties every ~5s across all clients
+        public const string DestroyedSettlementSentinel = "__DESTROYED__";
         public const float AiAreaOfInterestRadius = 68.0f; // Exceeds MaximumSeeingRange (60) for smooth boundary entry
         private const float AiAreaOfInterestRadiusSq = AiAreaOfInterestRadius * AiAreaOfInterestRadius;
         private const float ClientFallbackVisibilityRadius = 45.0f;
 
         private int _rollingCursor = 0;
+        private int _worldReconcileCursor = 0;
+        private float _clientConnectedSeconds = 0f;
+        private float _clientStaleCheckTimer = 0f;
         private readonly Dictionary<string, Vec2> _lastKnownPositions = new Dictionary<string, Vec2>();
         private readonly Dictionary<string, Vec2> _lastKnownTargets = new Dictionary<string, Vec2>();
         private readonly Dictionary<string, string> _lastKnownSettlements = new Dictionary<string, string>();
+        private readonly HashSet<string> _knownActiveServerAiIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly HashSet<string> _currentTickActiveAiIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly List<string> _removedAiIdsBuffer = new List<string>(16);
         private readonly Dictionary<string, RemotePlayerMotionState> _remotePlayerMotion = new Dictionary<string, RemotePlayerMotionState>(StringComparer.Ordinal);
         private readonly List<Vec2> _playerPositionsBuffer = new List<Vec2>(16);
         private readonly List<PartySnapshotData> _outgoingBuffer = new List<PartySnapshotData>(64);
@@ -37,6 +45,85 @@ namespace CalradiaConnected.Campaign.Sync
         private float _lastMissingHeroRequestTime = 0f;
         private static readonly ConcurrentDictionary<string, long> _recentlyDisconnectedParties =
             new ConcurrentDictionary<string, long>(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, byte> _serverGarrisonedParties =
+            new ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, byte> _destroyedAiParties =
+            new ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, byte> _suppressedStaleAiParties =
+            new ConcurrentDictionary<string, byte>(StringComparer.Ordinal);
+        private static readonly ConcurrentDictionary<string, long> _clientLastAiSyncTickMs =
+            new ConcurrentDictionary<string, long>(StringComparer.Ordinal);
+
+        public static void MarkPartyGarrisoned(string? partyId)
+        {
+            if (!string.IsNullOrEmpty(partyId)) _serverGarrisonedParties[partyId!] = 1;
+        }
+
+        public static void ClearPartyGarrisoned(string? partyId)
+        {
+            if (!string.IsNullOrEmpty(partyId)) _serverGarrisonedParties.TryRemove(partyId!, out _);
+        }
+
+        public static void MarkClientAiPartySynced(string? partyId)
+        {
+            if (string.IsNullOrEmpty(partyId)) return;
+            _clientLastAiSyncTickMs[partyId!] = Environment.TickCount;
+            _suppressedStaleAiParties.TryRemove(partyId!, out _);
+            _destroyedAiParties.TryRemove(partyId!, out _);
+        }
+
+        public static bool IsAiPartyHiddenByServer(string? partyId)
+        {
+            if (string.IsNullOrEmpty(partyId)) return false;
+            return _serverGarrisonedParties.ContainsKey(partyId!)
+                || _destroyedAiParties.ContainsKey(partyId!)
+                || _suppressedStaleAiParties.ContainsKey(partyId!);
+        }
+
+        public static void ClearClientAiSyncState()
+        {
+            _serverGarrisonedParties.Clear();
+            _destroyedAiParties.Clear();
+            _suppressedStaleAiParties.Clear();
+            _clientLastAiSyncTickMs.Clear();
+        }
+
+        public static void ApplyRemoteAiPartyDestroyed(MobileParty? party, string partyId)
+        {
+            if (!string.IsNullOrEmpty(partyId))
+            {
+                _destroyedAiParties[partyId] = 1;
+                _serverGarrisonedParties.TryRemove(partyId, out _);
+                _suppressedStaleAiParties.TryRemove(partyId, out _);
+                _clientLastAiSyncTickMs.TryRemove(partyId, out _);
+            }
+
+            if (party == null || party.IsMainParty || NetworkObjectRegistry.IsPlayerNetworkParty(party))
+            {
+                return;
+            }
+
+            try
+            {
+                if (party.CurrentSettlement != null)
+                {
+                    try { LeaveSettlementAction.ApplyForParty(party); } catch { }
+                }
+                if (party.MapEvent != null && party.Party != null)
+                {
+                    try { party.Party.MapEventSide = null; } catch { }
+                }
+                party.SetMoveModeHold();
+                party.IsVisible = false;
+                party.IsInspected = false;
+                party.Party?.SetVisualAsDirty();
+                if (party.IsActive && !party.IsDisbanding)
+                {
+                    DestroyPartyAction.Apply(null, party);
+                }
+            }
+            catch { }
+        }
 
         public static void MarkPartyDisconnected(string? partyId, int durationMs = 8000)
         {
@@ -92,7 +179,65 @@ namespace CalradiaConnected.Campaign.Sync
             }
             else if (ModContext.IsClientConnected)
             {
+                _clientConnectedSeconds += dt;
                 InterpolateStalledRemotePlayers(dt);
+                _clientStaleCheckTimer += dt;
+                if (_clientStaleCheckTimer >= 1.0f)
+                {
+                    _clientStaleCheckTimer = 0f;
+                    ReconcileStaleNearbyAiParties();
+                }
+            }
+            else if (_clientConnectedSeconds > 0f)
+            {
+                _clientConnectedSeconds = 0f;
+                _clientStaleCheckTimer = 0f;
+                ClearClientAiSyncState();
+            }
+        }
+
+        private void ReconcileStaleNearbyAiParties()
+        {
+            var campaign = GameCampaign.Current;
+            var mainParty = MobileParty.MainParty;
+            var allParties = MobileParty.All;
+            if (campaign == null || !campaign.GameStarted || campaign.SaveHandler?.IsSaving == true ||
+                mainParty == null || allParties == null || _clientConnectedSeconds < 8.0f || _clientLastAiSyncTickMs.IsEmpty)
+            {
+                return;
+            }
+
+            var mainPos = mainParty.GetPosition2D;
+            if (!mainPos.IsValid) return;
+
+            const float checkRadiusSq = 60.0f * 60.0f;
+            int nowMs = Environment.TickCount;
+
+            for (int i = 0; i < allParties.Count; i++)
+            {
+                var p = allParties[i];
+                if (p == null || !p.IsActive || p.IsMainParty || p.StringId == "cc_server_party") continue;
+                if (p.IsGarrison || p.IsMilitia || p.CurrentSettlement != null) continue;
+                if (NetworkObjectRegistry.IsPlayerNetworkParty(p)) continue;
+
+                var pPos = p.GetPosition2D;
+                if (!pPos.IsValid || (pPos - mainPos).LengthSquared > checkRadiusSq) continue;
+
+                bool hasFreshSync = _clientLastAiSyncTickMs.TryGetValue(p.StringId, out long lastMs) &&
+                                    unchecked(nowMs - (int)lastMs) <= 7500;
+                if (!hasFreshSync)
+                {
+                    // Party is sitting inside our spotting radius locally (e.g. frozen at a town gate from initial save),
+                    // yet the server hasn't confirmed it exists here in >7.5s -> suppress stale ghost until server updates it.
+                    _suppressedStaleAiParties[p.StringId] = 1;
+                    p.SetMoveModeHold();
+                    if (p.IsVisible || p.IsInspected)
+                    {
+                        p.IsVisible = false;
+                        p.IsInspected = false;
+                        p.Party?.SetVisualAsDirty();
+                    }
+                }
             }
         }
 
@@ -206,6 +351,7 @@ namespace CalradiaConnected.Campaign.Sync
             _reliableSettlementBuffer.Clear();
             _includedIdsBuffer.Clear();
             _playerPositionsBuffer.Clear();
+            _currentTickActiveAiIds.Clear();
 
             int totalCount = allParties.Count;
 
@@ -236,6 +382,11 @@ namespace CalradiaConnected.Campaign.Sync
                 string partyId = party.StringId;
                 var pos = party.GetPosition2D;
                 bool isPlayerParty = NetworkObjectRegistry.IsPlayerNetworkParty(party);
+                if (!isPlayerParty)
+                {
+                    _currentTickActiveAiIds.Add(partyId);
+                    _knownActiveServerAiIds.Add(partyId);
+                }
 
                 if (isPlayerParty &&
                     (party.LeaderHero == null ||
@@ -347,7 +498,60 @@ namespace CalradiaConnected.Campaign.Sync
                 _outgoingBuffer.Add(BuildSnapshot(party, party.StringId, pos, target, settlementId, isPlayerParty));
             }
 
-            // 3. Broadcast settlement state transitions reliably, and continuous movement updates in MTU-safe Unreliable chunks
+            // 2b. World-wide slow rolling reconciliation sweep (syncs ALL active AI parties' true position & settlement
+            // across all clients every ~5s so distant caravans/lords never remain frozen at old gates when players travel!)
+            int worldChecked = 0;
+            int worldAdded = 0;
+            while (worldChecked < totalCount && worldAdded < WORLD_RECONCILE_PER_TICK)
+            {
+                if (_worldReconcileCursor >= totalCount) _worldReconcileCursor = 0;
+                var party = allParties[_worldReconcileCursor++];
+                worldChecked++;
+
+                if (party == null || !party.IsActive || party.IsMainParty || party.StringId == "cc_server_party") continue;
+                if (party.IsGarrison || party.IsMilitia) continue;
+                if (_includedIdsBuffer.Contains(party.StringId)) continue;
+                if (NetworkObjectRegistry.IsPlayerNetworkParty(party)) continue;
+
+                var pos = party.GetPosition2D;
+                if (!pos.IsValid) continue;
+                var target = party.MoveTargetPoint.ToVec2();
+                if (!target.IsValid) target = pos;
+                string settlementId = party.CurrentSettlement?.StringId ?? string.Empty;
+
+                _includedIdsBuffer.Add(party.StringId);
+                worldAdded++;
+                _outgoingBuffer.Add(BuildSnapshot(party, party.StringId, pos, target, settlementId, isPlayerParty: false));
+            }
+
+            // 2c. Notify clients reliably whenever a previously active AI party was destroyed/disbanded on the server
+            if (_knownActiveServerAiIds.Count > _currentTickActiveAiIds.Count)
+            {
+                _removedAiIdsBuffer.Clear();
+                foreach (var prevId in _knownActiveServerAiIds)
+                {
+                    if (!_currentTickActiveAiIds.Contains(prevId))
+                    {
+                        _removedAiIdsBuffer.Add(prevId);
+                    }
+                }
+                for (int r = 0; r < _removedAiIdsBuffer.Count; r++)
+                {
+                    string deadId = _removedAiIdsBuffer[r];
+                    _knownActiveServerAiIds.Remove(deadId);
+                    _lastKnownPositions.Remove(deadId);
+                    _lastKnownTargets.Remove(deadId);
+                    _lastKnownSettlements.Remove(deadId);
+                    _reliableSettlementBuffer.Add(new PartySnapshotData
+                    {
+                        PartyId = deadId,
+                        CurrentSettlementId = DestroyedSettlementSentinel,
+                        IsVisible = false
+                    });
+                }
+            }
+
+            // 3. Broadcast settlement/destruction transitions reliably, and continuous movement updates in MTU-safe Unreliable chunks
             BroadcastSnapshotList(server, _reliableSettlementBuffer, LiteNetLib.DeliveryMethod.ReliableOrdered);
             BroadcastSnapshotList(server, _outgoingBuffer, LiteNetLib.DeliveryMethod.Unreliable);
         }
@@ -459,6 +663,7 @@ namespace CalradiaConnected.Campaign.Sync
 
             if (settlement != null)
             {
+                MarkPartyGarrisoned(party.StringId);
                 if (party.CurrentSettlement != settlement)
                 {
                     try
@@ -467,6 +672,7 @@ namespace CalradiaConnected.Campaign.Sync
                         {
                             party.Party.MapEventSide = null;
                         }
+                        party.SetMoveModeHold();
                         if (party.CurrentSettlement != null)
                         {
                             LeaveSettlementAction.ApplyForParty(party);
@@ -508,6 +714,7 @@ namespace CalradiaConnected.Campaign.Sync
                 return;
             }
 
+            ClearPartyGarrisoned(party.StringId);
             if (party.CurrentSettlement != null)
             {
                 try
@@ -579,6 +786,14 @@ namespace CalradiaConnected.Campaign.Sync
                     var party = IsRecentlyDisconnectedParty(snap.PartyId)
                         ? null
                         : NetworkObjectRegistry.Instance.ResolveParty(snap.PartyId);
+
+                    // 1b. Handle destroyed/disbanded AI parties reliably
+                    if (string.Equals(snap.CurrentSettlementId, DestroyedSettlementSentinel, StringComparison.Ordinal))
+                    {
+                        ApplyRemoteAiPartyDestroyed(party, snap.PartyId);
+                        continue;
+                    }
+
                     if (party == null || !party.IsActive || party.IsMainParty)
                     {
                         if (party == null &&
@@ -593,6 +808,12 @@ namespace CalradiaConnected.Campaign.Sync
                             }
                         }
                         continue;
+                    }
+
+                    bool isPlayerPartyPre = NetworkObjectRegistry.IsPlayerNetworkParty(party);
+                    if (!isPlayerPartyPre)
+                    {
+                        MarkClientAiPartySynced(snap.PartyId);
                     }
 
                     if (party.IsCurrentlyAtSea != snap.IsAtSea)
@@ -622,7 +843,7 @@ namespace CalradiaConnected.Campaign.Sync
                         }
                         continue;
                     }
-                    else if (party.CurrentSettlement != null)
+                    else if (party.CurrentSettlement != null || _serverGarrisonedParties.ContainsKey(party.StringId))
                     {
                         ApplyRemotePartySettlementState(party, null, serverPos, snap.IsAtSea);
                     }
@@ -682,10 +903,11 @@ namespace CalradiaConnected.Campaign.Sync
                                 party.Party?.SetVisualAsDirty();
                             }
 
-                            if ((serverPos - party.GetPosition2D).LengthSquared > 36.0f)
+                            if ((serverPos - party.GetPosition2D).LengthSquared > 4.0f)
                             {
-                                party.Position = new CampaignVec2(serverPos, isOnLand: isOnLand);
+                                party.Position = ResolveValidPosition(serverPos, preferLand: isOnLand);
                             }
+                            party.SetMoveModeHold();
                             continue;
                         }
                     }
@@ -694,10 +916,10 @@ namespace CalradiaConnected.Campaign.Sync
                     var curClientPos = party.GetPosition2D;
                     float drift = (serverPos - curClientPos).Length;
 
-                    // Snap only if drift is large (e.g., initial sync or teleport)
-                    if (drift > 5.0f)
+                    // Snap if drift exceeds 3.0 units so caravans/lords never lag behind or stall at city gates
+                    if (drift > 3.0f)
                     {
-                        party.Position = new CampaignVec2(serverPos, isOnLand: isOnLand);
+                        party.Position = ResolveValidPosition(serverPos, preferLand: isOnLand);
                         party.Party?.SetVisualAsDirty();
                         curClientPos = serverPos;
                         drift = 0f;
@@ -751,6 +973,7 @@ namespace CalradiaConnected.Campaign.Sync
         /// </summary>
         public static int ResetOutOfRangeAiVisibility(MobileParty? mainParty)
         {
+            ClearClientAiSyncState();
             var campaign = GameCampaign.Current;
             var allParties = MobileParty.All;
             if (campaign == null || allParties == null) return 0;

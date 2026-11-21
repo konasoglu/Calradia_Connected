@@ -54,41 +54,39 @@ namespace CalradiaConnected.Campaign.Services
             ModContext.Events.Publish(new LocalRosterChangedEvent { Reason = "VolunteerRecruited" });
         }
 
-        private const float AiSettlementSyncRadiusSq = 85.0f * 85.0f;
-
         public void BroadcastServerAiSettlementChange(MobileParty party, Settlement settlement, bool entered)
         {
             if (!ModContext.IsServerRunning || ModContext.Server == null || !ModContext.Server.IsRunning) return;
             if ((ModContext.Server.Sessions?.Count ?? 0) == 0) return;
             if (party == null || settlement == null || string.IsNullOrEmpty(party.StringId)) return;
 
-            var sPos = settlement.GetPosition2D;
-            bool nearAnyPlayer = false;
-            var allParties = MobileParty.All;
-            if (allParties != null && sPos.IsValid)
-            {
-                for (int i = 0; i < allParties.Count; i++)
-                {
-                    var p = allParties[i];
-                    if (p != null && p.IsActive && !p.IsMainParty && NetworkObjectRegistry.IsPlayerNetworkParty(p))
-                    {
-                        var pPos = p.GetPosition2D;
-                        if (pPos.IsValid && (pPos - sPos).LengthSquared <= AiSettlementSyncRadiusSq)
-                        {
-                            nearAnyPlayer = true;
-                            break;
-                        }
-                    }
-                }
-            }
-            if (!nearAnyPlayer) return;
-
+            // Always broadcast AI settlement enter/leave reliably to all clients regardless of player distance
+            // so caravans and lords never freeze at settlement gates when players later travel to that region.
             var packet = new SettlementInteractionPacket
             {
                 PeerId = 0, // 0 identifies AI party sync
                 SettlementId = settlement.StringId,
                 ActionType = entered ? (byte)1 : (byte)2,
                 SlotIndex = party.IsCurrentlyAtSea ? 1 : 0,
+                Payload = party.StringId
+            };
+            ModContext.Server.Broadcast(packet, LiteNetLib.DeliveryMethod.ReliableOrdered);
+        }
+
+        public void BroadcastServerAiPartyDestroyed(MobileParty party)
+        {
+            if (!ModContext.IsServerRunning || ModContext.Server == null || !ModContext.Server.IsRunning) return;
+            if ((ModContext.Server.Sessions?.Count ?? 0) == 0) return;
+            if (party == null || string.IsNullOrEmpty(party.StringId)) return;
+            if (party.IsMainParty || party.StringId == "cc_server_party" || party.IsGarrison || party.IsMilitia) return;
+            if (NetworkObjectRegistry.IsPlayerNetworkParty(party)) return;
+
+            var packet = new SettlementInteractionPacket
+            {
+                PeerId = 0,
+                SettlementId = string.Empty,
+                ActionType = 6, // AI party destroyed/disbanded
+                SlotIndex = 0,
                 Payload = party.StringId
             };
             ModContext.Server.Broadcast(packet, LiteNetLib.DeliveryMethod.ReliableOrdered);
@@ -137,11 +135,19 @@ namespace CalradiaConnected.Campaign.Services
 
                     var settlement = NetworkObjectRegistry.Instance.ResolveSettlement(packet.SettlementId);
 
-                    // AI party reliable Enter/Leave notification from Server
+                    // AI party reliable Enter/Leave/Destroyed notification from Server
                     if (packet.PeerId == 0 && !string.IsNullOrEmpty(packet.Payload))
                     {
                         if (ModContext.IsServerRunning) return;
                         var aiParty = NetworkObjectRegistry.Instance.ResolveParty(packet.Payload);
+
+                        if (packet.ActionType == 6)
+                        {
+                            Sync.WorldSyncManager.ApplyRemoteAiPartyDestroyed(aiParty, packet.Payload);
+                            return;
+                        }
+
+                        Sync.WorldSyncManager.MarkClientAiPartySynced(packet.Payload);
                         if (aiParty == null || aiParty.IsMainParty || !aiParty.IsActive) return;
 
                         bool aiAtSea = packet.SlotIndex == 1;

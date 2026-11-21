@@ -58,7 +58,8 @@ namespace CalradiaConnected.Mod.Patches
                         __result = false;
                     }
                 }
-                else if (!__instance.IsMainParty && __instance.CurrentSettlement != null)
+                else if (!__instance.IsMainParty &&
+                         (__instance.CurrentSettlement != null || WorldSyncManager.IsAiPartyHiddenByServer(__instance.StringId)))
                 {
                     __result = false;
                 }
@@ -89,7 +90,9 @@ namespace CalradiaConnected.Mod.Patches
                     return;
                 }
 
-                if (__instance.CurrentSettlement != null && !__instance.IsMainParty)
+                if (!__instance.IsMainParty &&
+                    (__instance.CurrentSettlement != null ||
+                     (!NetworkObjectRegistry.IsPlayerNetworkParty(__instance) && WorldSyncManager.IsAiPartyHiddenByServer(__instance.StringId))))
                 {
                     value = false;
                     return;

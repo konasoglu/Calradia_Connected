@@ -1681,6 +1681,35 @@ namespace CalradiaConnected.Verification
             Console.WriteLine($"[30/30] Responder Speech Bubble, Game/OS Language Sync, Fixed Login Dropdown & Trade Sync Fixes (Reply={dialogReplyOk}, LangUI={langAutoSyncAndUiOk}, Trade={tradeSyncFixesOk}) -> {(v1116Pass ? "PASS" : "FAIL")}");
             if (!v1116Pass) failures++;
 
+            // 31. Global AI World Reconciliation, Destroyed AI Cleanup, Unfiltered Settlement Sync & Stale Gate-Ghost Suppression
+            bool worldReconcileOk = false;
+            bool destroyedAndSettlementOk = false;
+            bool staleGateGhostGuardOk = false;
+            {
+                string wsmSrc31 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Campaign", "Sync", "WorldSyncManager.cs"));
+                string ssSrc31 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Campaign", "Services", "SettlementSyncService.cs"));
+                string sharedSrc31 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Campaign", "Services", "SharedCampaignSyncBehavior.cs"));
+                string puppetSrc31 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Mod", "Patches", "PuppetPartyAiPatch.cs"));
+
+                worldReconcileOk = wsmSrc31.Contains("WORLD_RECONCILE_PER_TICK")
+                    && wsmSrc31.Contains("_worldReconcileCursor")
+                    && wsmSrc31.Contains("DestroyedSettlementSentinel");
+
+                destroyedAndSettlementOk = !ssSrc31.Contains("if (!nearAnyPlayer) return;")
+                    && ssSrc31.Contains("BroadcastServerAiPartyDestroyed")
+                    && sharedSrc31.Contains("CampaignEvents.MobilePartyDestroyed")
+                    && wsmSrc31.Contains("ApplyRemoteAiPartyDestroyed");
+
+                staleGateGhostGuardOk = wsmSrc31.Contains("ReconcileStaleNearbyAiParties")
+                    && wsmSrc31.Contains("IsAiPartyHiddenByServer")
+                    && wsmSrc31.Contains("MarkPartyGarrisoned")
+                    && puppetSrc31.Contains("WorldSyncManager.IsAiPartyHiddenByServer");
+            }
+
+            bool v1117Pass = worldReconcileOk && destroyedAndSettlementOk && staleGateGhostGuardOk;
+            Console.WriteLine($"[31/31] Global AI World Reconciliation, Destroyed AI Sync & Stale Gate-Ghost Suppression (Reconcile={worldReconcileOk}, DestroyedSettlement={destroyedAndSettlementOk}, GhostGuard={staleGateGhostGuardOk}) -> {(v1117Pass ? "PASS" : "FAIL")}");
+            if (!v1117Pass) failures++;
+
             return failures;
         }
     }
