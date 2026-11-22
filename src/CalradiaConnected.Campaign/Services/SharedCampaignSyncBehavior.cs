@@ -38,6 +38,11 @@ namespace CalradiaConnected.Campaign.Services
             CampaignEvents.OnSiegeEventStartedEvent.AddNonSerializedListener(this, OnSiegeEventStarted);
             CampaignEvents.OnSiegeEventEndedEvent.AddNonSerializedListener(this, OnSiegeEventEnded);
             CampaignEvents.MapEventEnded.AddNonSerializedListener(this, OnMapEventEnded);
+            CampaignEvents.KingdomCreatedEvent.AddNonSerializedListener(this, KingdomDiplomacySyncService.Instance.OnLocalKingdomCreated);
+            CampaignEvents.OnClanChangedKingdomEvent.AddNonSerializedListener(this, KingdomDiplomacySyncService.Instance.OnLocalClanChangedKingdom);
+            CampaignEvents.OnSettlementOwnerChangedEvent.AddNonSerializedListener(this, KingdomDiplomacySyncService.Instance.OnLocalSettlementOwnerChanged);
+            CampaignEvents.WarDeclared.AddNonSerializedListener(this, KingdomDiplomacySyncService.Instance.OnLocalWarDeclared);
+            CampaignEvents.MakePeace.AddNonSerializedListener(this, KingdomDiplomacySyncService.Instance.OnLocalMakePeace);
             CampaignEvents.ConversationEnded.AddNonSerializedListener(this, OnConversationEnded);
             CampaignEvents.BarterablesRequested.AddNonSerializedListener(this, PlayerInteractionService.Instance.AppendAffordablePlayerBarterables);
             CampaignEvents.OnShipCreatedEvent.AddNonSerializedListener(this, (ship, settlement) =>

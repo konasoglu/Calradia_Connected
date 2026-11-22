@@ -47,6 +47,7 @@ namespace CalradiaConnected.Network.Transport
             RegisterPacket<WorldSaveRequestPacket>();
             RegisterPacket<WorldSaveChunkPacket>();
             RegisterPacket<ServerConfigSyncPacket>();
+            RegisterPacket<KingdomDiplomacySyncPacket>();
         }
 
         public void RegisterPacket<T>() where T : class, INetSerializable, new()

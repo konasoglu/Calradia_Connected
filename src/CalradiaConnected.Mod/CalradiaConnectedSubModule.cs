@@ -362,6 +362,11 @@ namespace CalradiaConnected.Mod
                     ServerGameRulesService.Instance.HandleServerConfigSyncPacket(packet);
                 });
 
+                _client.Router.Subscribe<Common.Packets.KingdomDiplomacySyncPacket>((packet, peer) =>
+                {
+                    KingdomDiplomacySyncService.Instance.HandlePacket(packet);
+                });
+
                 _client.Router.Subscribe<Common.Packets.ChatMessagePacket>((packet, peer) =>
                 {
                     _dispatcher?.Enqueue(() =>
@@ -428,6 +433,16 @@ namespace CalradiaConnected.Mod
                     }
                     PlayerHeroManager.Instance.HandleServerHeroCreatedPacket(packet);
                     CampaignTimeSyncBehavior.Instance?.BroadcastServerTime();
+                    KingdomDiplomacySyncService.Instance.SendFullStateToPeer(packet.PeerId);
+                });
+
+                _server.Router.Subscribe<Common.Packets.KingdomDiplomacySyncPacket>((packet, peer) =>
+                {
+                    if (_server != null)
+                    {
+                        packet.ActorPeerId = _server.ResolveSessionPeerId(peer, packet.ActorPeerId);
+                    }
+                    KingdomDiplomacySyncService.Instance.HandlePacket(packet);
                 });
 
                 _server.Router.Subscribe<Common.Packets.SettlementInteractionPacket>((packet, peer) =>

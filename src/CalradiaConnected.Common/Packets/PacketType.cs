@@ -44,7 +44,10 @@ namespace CalradiaConnected.Common.Packets
         WorldSaveChunk = 34,
 
         // Authoritative Server Config, Game Rules & Progression Sync
-        ServerConfigSync = 35
+        ServerConfigSync = 35,
+
+        // v1.2.0 Expansion: Kingdom/Diplomacy, Player Armies, Co-op Battles & Co-op Activities
+        KingdomDiplomacySync = 36
     }
 
     public interface IPacket : INetSerializable

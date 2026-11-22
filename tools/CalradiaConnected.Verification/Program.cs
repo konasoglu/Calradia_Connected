@@ -1710,6 +1710,105 @@ namespace CalradiaConnected.Verification
             Console.WriteLine($"[31/31] Global AI World Reconciliation, Destroyed AI Sync & Stale Gate-Ghost Suppression (Reconcile={worldReconcileOk}, DestroyedSettlement={destroyedAndSettlementOk}, GhostGuard={staleGateGhostGuardOk}) -> {(v1117Pass ? "PASS" : "FAIL")}");
             if (!v1117Pass) failures++;
 
+            // 32. Phase 1 (v1.2.0): Kingdom, Conquest & Diplomacy Synchronization
+            bool diplomacyPacketRoundtripOk = false;
+            bool diplomacyServiceAndWiringOk = false;
+            bool diplomacyLoc8LangOk = false;
+            {
+                var pktType = cmnAsm.GetType("CalradiaConnected.Common.Packets.KingdomDiplomacySyncPacket");
+                var pktEnumType = cmnAsm.GetType("CalradiaConnected.Common.Packets.PacketType");
+                if (pktType != null && pktEnumType != null)
+                {
+                    object pkt = Activator.CreateInstance(pktType)!;
+                    pktType.GetProperty("ActionType")!.SetValue(pkt, (byte)1);
+                    pktType.GetProperty("ActorPeerId")!.SetValue(pkt, 1007);
+                    pktType.GetProperty("ClanId")!.SetValue(pkt, "cc_clan_1007");
+                    pktType.GetProperty("KingdomId")!.SetValue(pkt, "cc_kingdom_1007");
+                    pktType.GetProperty("KingdomName")!.SetValue(pkt, "New Calradian Empire");
+                    pktType.GetProperty("InformalName")!.SetValue(pkt, "Calradians");
+                    pktType.GetProperty("CultureId")!.SetValue(pkt, "empire");
+                    pktType.GetProperty("BannerKey")!.SetValue(pkt, "11.4.4.1528.1528.764.764.1.0.0.503.131.116.400.400.764.764.0.0.0");
+                    pktType.GetProperty("TargetFactionId")!.SetValue(pkt, "vlandia");
+                    pktType.GetProperty("SettlementId")!.SetValue(pkt, "town_EW2");
+                    pktType.GetProperty("PrimaryColor")!.SetValue(pkt, 0xFFAA2233u);
+                    pktType.GetProperty("SecondaryColor")!.SetValue(pkt, 0xFFEEEEEEu);
+                    pktType.GetProperty("MercenaryAwardMultiplier")!.SetValue(pkt, 150);
+                    pktType.GetProperty("DetailCode")!.SetValue(pkt, (byte)5);
+                    pktType.GetProperty("SnapshotPayload")!.SetValue(pkt, "K|cc_kingdom_1007|Test\nW|cc_kingdom_1007|vlandia\n");
+
+                    var liteNetAsm = Assembly.LoadFrom(Path.Combine(_probeDirs[0], "LiteNetLib.dll"));
+                    var writerType = liteNetAsm.GetType("LiteNetLib.Utils.NetDataWriter")!;
+                    var readerType = liteNetAsm.GetType("LiteNetLib.Utils.NetDataReader")!;
+                    object writer = Activator.CreateInstance(writerType)!;
+                    pktType.GetMethod("Serialize")!.Invoke(pkt, new[] { writer });
+
+                    byte[] bytes = (byte[])writerType.GetMethod("CopyData")!.Invoke(writer, null)!;
+                    object reader = Activator.CreateInstance(readerType, new object[] { bytes })!;
+                    object pktOut = Activator.CreateInstance(pktType)!;
+                    pktType.GetMethod("Deserialize")!.Invoke(pktOut, new[] { reader });
+
+                    byte typeVal = Convert.ToByte(pktType.GetProperty("Type")!.GetValue(pktOut)!);
+                    diplomacyPacketRoundtripOk = typeVal == 36
+                        && (byte)pktType.GetProperty("ActionType")!.GetValue(pktOut)! == 1
+                        && (int)pktType.GetProperty("ActorPeerId")!.GetValue(pktOut)! == 1007
+                        && (string)pktType.GetProperty("ClanId")!.GetValue(pktOut)! == "cc_clan_1007"
+                        && (string)pktType.GetProperty("KingdomId")!.GetValue(pktOut)! == "cc_kingdom_1007"
+                        && (string)pktType.GetProperty("KingdomName")!.GetValue(pktOut)! == "New Calradian Empire"
+                        && (string)pktType.GetProperty("CultureId")!.GetValue(pktOut)! == "empire"
+                        && (uint)pktType.GetProperty("PrimaryColor")!.GetValue(pktOut)! == 0xFFAA2233u
+                        && (int)pktType.GetProperty("MercenaryAwardMultiplier")!.GetValue(pktOut)! == 150
+                        && (byte)pktType.GetProperty("DetailCode")!.GetValue(pktOut)! == 5
+                        && ((string)pktType.GetProperty("SnapshotPayload")!.GetValue(pktOut)!).Contains("W|cc_kingdom_1007|vlandia");
+                }
+
+                var svcType32 = cmpAsm.GetType("CalradiaConnected.Campaign.Services.KingdomDiplomacySyncService");
+                bool hasSvcMethods = svcType32?.GetProperty("IsApplyingRemoteDiplomacy", BindingFlags.Public | BindingFlags.Instance) != null
+                    && svcType32?.GetMethod("OnLocalKingdomCreated", BindingFlags.Public | BindingFlags.Instance) != null
+                    && svcType32?.GetMethod("OnLocalClanChangedKingdom", BindingFlags.Public | BindingFlags.Instance) != null
+                    && svcType32?.GetMethod("OnLocalSettlementOwnerChanged", BindingFlags.Public | BindingFlags.Instance) != null
+                    && svcType32?.GetMethod("OnLocalWarDeclared", BindingFlags.Public | BindingFlags.Instance) != null
+                    && svcType32?.GetMethod("OnLocalMakePeace", BindingFlags.Public | BindingFlags.Instance) != null
+                    && svcType32?.GetMethod("HandlePacket", BindingFlags.Public | BindingFlags.Instance) != null
+                    && svcType32?.GetMethod("SendFullStateToPeer", BindingFlags.Public | BindingFlags.Instance) != null
+                    && svcType32?.GetMethod("BuildFullStateSnapshotPayload", BindingFlags.Public | BindingFlags.Instance) != null;
+
+                string routerSrc32 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Network", "Transport", "PacketRouter.cs"));
+                string sharedSrc32 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Campaign", "Services", "SharedCampaignSyncBehavior.cs"));
+                string subModSrc32 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Mod", "CalradiaConnectedSubModule.cs"));
+
+                diplomacyServiceAndWiringOk = hasSvcMethods
+                    && routerSrc32.Contains("RegisterPacket<KingdomDiplomacySyncPacket>()")
+                    && sharedSrc32.Contains("CampaignEvents.KingdomCreatedEvent")
+                    && sharedSrc32.Contains("CampaignEvents.OnClanChangedKingdomEvent")
+                    && sharedSrc32.Contains("CampaignEvents.OnSettlementOwnerChangedEvent")
+                    && sharedSrc32.Contains("CampaignEvents.WarDeclared")
+                    && sharedSrc32.Contains("CampaignEvents.MakePeace")
+                    && subModSrc32.Contains("KingdomDiplomacySyncService.Instance.HandlePacket")
+                    && subModSrc32.Contains("KingdomDiplomacySyncService.Instance.SendFullStateToPeer");
+
+                var locType32 = cmnAsm.GetType("CalradiaConnected.Common.Localization.Loc");
+                var setL32 = locType32?.GetMethod("SetLanguage", BindingFlags.Public | BindingFlags.Static);
+                var f32 = locType32?.GetMethod("F", BindingFlags.Public | BindingFlags.Static);
+                if (setL32 != null && f32 != null)
+                {
+                    setL32.Invoke(null, new object[] { "DE" });
+                    string deWar = (string)f32.Invoke(null, new object[] { "{0}, {1} tarafına savaş ilan etti!", "{0} declared war on {1}!", new object[] { "Vlandia", "Sturgia" } })!;
+                    setL32.Invoke(null, new object[] { "RU" });
+                    string ruConq = (string)f32.Invoke(null, new object[] { "{0}, {1} yerleşkesini fethetti!", "{0} conquered {1}!", new object[] { "A", "Pravend" } })!;
+                    setL32.Invoke(null, new object[] { "ZH" });
+                    string zhPeace = (string)f32.Invoke(null, new object[] { "{0} ile {1} barış yaptı.", "{0} and {1} made peace.", new object[] { "A", "B" } })!;
+                    setL32.Invoke(null, new object[] { "TR" });
+
+                    diplomacyLoc8LangOk = deWar == "Vlandia hat Sturgia den Krieg erklärt!"
+                        && ruConq == "A захватил Pravend!"
+                        && zhPeace == "A 与 B 达成了和平。";
+                }
+            }
+
+            bool phase1DiplomacyPass = diplomacyPacketRoundtripOk && diplomacyServiceAndWiringOk && diplomacyLoc8LangOk;
+            Console.WriteLine($"[32/32] Phase 1: Kingdom, Conquest & Diplomacy Sync (PacketRoundtrip={diplomacyPacketRoundtripOk}, ServiceWiring={diplomacyServiceAndWiringOk}, Loc8Lang={diplomacyLoc8LangOk}) -> {(phase1DiplomacyPass ? "PASS" : "FAIL")}");
+            if (!phase1DiplomacyPass) failures++;
+
             return failures;
         }
     }
