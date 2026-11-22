@@ -255,6 +255,23 @@ namespace CalradiaConnected.Mod
                 BattleSyncService.Instance.EnsureSubscribed();
 
                 ModContext.Events.Subscribe<HeroExecutionReceivedEvent>(OnHeroExecutionReceived);
+                ModContext.Events.Subscribe<CoopBattleSessionUpdatedEvent>(evt =>
+                {
+                    if (evt == null) return;
+                    if (evt.IsActive)
+                    {
+                        CoopMissionSyncBehavior.ConfigurePendingCoopSession(
+                            evt.SessionId,
+                            evt.IsHost,
+                            evt.HostPeerId,
+                            evt.AlliedPeerIds,
+                            evt.FriendlyFireEnabled);
+                    }
+                    else
+                    {
+                        CoopMissionSyncBehavior.ClearPendingCoopSession();
+                    }
+                });
 
                 _worldSync.OnMissingRemotePlayerDetected += () =>
                 {
@@ -367,6 +384,28 @@ namespace CalradiaConnected.Mod
                     KingdomDiplomacySyncService.Instance.HandlePacket(packet);
                 });
 
+                _client.Router.Subscribe<Common.Packets.PlayerArmySyncPacket>((packet, peer) =>
+                {
+                    PlayerArmyService.Instance.HandlePacket(packet);
+                });
+
+                _client.Router.Subscribe<Common.Packets.CoopBattleSyncPacket>((packet, peer) =>
+                {
+                    if (packet.ActionType == 6 || packet.ActionType == 7)
+                    {
+                        CoopMissionSyncBehavior.HandleCoopBattleSyncPacket(packet);
+                    }
+                    else
+                    {
+                        CoopBattleService.Instance.HandlePacket(packet);
+                    }
+                });
+
+                _client.Router.Subscribe<Common.Packets.CoopActivitySyncPacket>((packet, peer) =>
+                {
+                    CoopActivityService.Instance.HandlePacket(packet);
+                });
+
                 _client.Router.Subscribe<Common.Packets.ChatMessagePacket>((packet, peer) =>
                 {
                     _dispatcher?.Enqueue(() =>
@@ -389,6 +428,9 @@ namespace CalradiaConnected.Mod
                     PlayerHeroManager.Instance.HandlePeerDisconnected(packet.PeerId, _worldSync);
                     BattleSyncService.Instance.HandlePeerDisconnected(packet.PeerId);
                     PlayerInteractionService.Instance.HandlePeerDisconnected(packet.PeerId);
+                    PlayerArmyService.Instance.HandlePeerDisconnected(packet.PeerId);
+                    CoopBattleService.Instance.HandlePeerDisconnected(packet.PeerId);
+                    CoopActivityService.Instance.HandlePeerDisconnected(packet.PeerId);
                 };
 
                 // Client: Apply remote player movement orders so remote player parties gallop smoothly at 60 FPS
@@ -421,6 +463,9 @@ namespace CalradiaConnected.Mod
                         PlayerHeroManager.Instance.HandlePeerDisconnected(session.PeerId, _worldSync);
                         BattleSyncService.Instance.HandlePeerDisconnected(session.PeerId);
                         PlayerInteractionService.Instance.HandlePeerDisconnected(session.PeerId);
+                        PlayerArmyService.Instance.HandlePeerDisconnected(session.PeerId);
+                        CoopBattleService.Instance.HandlePeerDisconnected(session.PeerId);
+                        CoopActivityService.Instance.HandlePeerDisconnected(session.PeerId);
                         RosterSyncService.Instance.ClearCachedRoster(session.PeerId);
                     }
                 };
@@ -443,6 +488,60 @@ namespace CalradiaConnected.Mod
                         packet.ActorPeerId = _server.ResolveSessionPeerId(peer, packet.ActorPeerId);
                     }
                     KingdomDiplomacySyncService.Instance.HandlePacket(packet);
+                });
+
+                _server.Router.Subscribe<Common.Packets.PlayerArmySyncPacket>((packet, peer) =>
+                {
+                    if (_server != null)
+                    {
+                        int verifiedPeer = _server.ResolveSessionPeerId(peer, packet.LeaderPeerId);
+                        if (packet.ActionType == 1 || packet.ActionType == 5 || packet.ActionType == 7)
+                        {
+                            packet.LeaderPeerId = verifiedPeer;
+                        }
+                        else if (packet.ActionType == 2 || packet.ActionType == 3 || packet.ActionType == 4)
+                        {
+                            packet.TargetPeerId = verifiedPeer;
+                        }
+                    }
+                    PlayerArmyService.Instance.HandlePacket(packet);
+                });
+
+                _server.Router.Subscribe<Common.Packets.CoopBattleSyncPacket>((packet, peer) =>
+                {
+                    if (_server != null)
+                    {
+                        int verifiedPeer = _server.ResolveSessionPeerId(peer, packet.ActorPeerId);
+                        packet.ActorPeerId = verifiedPeer;
+                        if (packet.ActionType == 1)
+                        {
+                            packet.HostPeerId = verifiedPeer;
+                        }
+                    }
+
+                    if (packet.ActionType == 6 || packet.ActionType == 7)
+                    {
+                        _server?.BroadcastExcept(packet, peer,
+                            packet.ActionType == 6 ? DeliveryMethod.Unreliable : DeliveryMethod.ReliableOrdered);
+                    }
+                    else
+                    {
+                        CoopBattleService.Instance.HandlePacket(packet);
+                    }
+                });
+
+                _server.Router.Subscribe<Common.Packets.CoopActivitySyncPacket>((packet, peer) =>
+                {
+                    if (_server != null)
+                    {
+                        int verifiedPeer = _server.ResolveSessionPeerId(peer, packet.ActorPeerId);
+                        packet.ActorPeerId = verifiedPeer;
+                        if (packet.ActionType == 1 || packet.ActionType == 10)
+                        {
+                            packet.HostPeerId = verifiedPeer;
+                        }
+                    }
+                    CoopActivityService.Instance.HandlePacket(packet);
                 });
 
                 _server.Router.Subscribe<Common.Packets.SettlementInteractionPacket>((packet, peer) =>
@@ -1866,6 +1965,7 @@ namespace CalradiaConnected.Mod
                     Patches.MoveOrderDebouncer.TickPending();
                     BattleSyncService.Instance.TickPendingPvpLaunch();
                     PlayerInteractionService.Instance.TickPendingLiveBarter();
+                    PlayerArmyService.Instance.TickArmyEscort(dt);
 
                     if (TaleWorldsCampaign.Current != null &&
                         TaleWorldsCampaign.Current.GameStarted &&

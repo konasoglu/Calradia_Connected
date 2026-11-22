@@ -37,7 +37,9 @@ namespace CalradiaConnected.Campaign.Services
             CampaignEvents.PlayerInventoryExchangeEvent.AddNonSerializedListener(this, OnPlayerInventoryExchange);
             CampaignEvents.OnSiegeEventStartedEvent.AddNonSerializedListener(this, OnSiegeEventStarted);
             CampaignEvents.OnSiegeEventEndedEvent.AddNonSerializedListener(this, OnSiegeEventEnded);
+            CampaignEvents.MapEventStarted.AddNonSerializedListener(this, CoopBattleService.Instance.OnLocalMapEventStarted);
             CampaignEvents.MapEventEnded.AddNonSerializedListener(this, OnMapEventEnded);
+            CampaignEvents.OnHideoutBattleCompletedEvent.AddNonSerializedListener(this, CoopActivityService.Instance.OnLocalHideoutBattleCompleted);
             CampaignEvents.KingdomCreatedEvent.AddNonSerializedListener(this, KingdomDiplomacySyncService.Instance.OnLocalKingdomCreated);
             CampaignEvents.OnClanChangedKingdomEvent.AddNonSerializedListener(this, KingdomDiplomacySyncService.Instance.OnLocalClanChangedKingdom);
             CampaignEvents.OnSettlementOwnerChangedEvent.AddNonSerializedListener(this, KingdomDiplomacySyncService.Instance.OnLocalSettlementOwnerChanged);
@@ -145,7 +147,82 @@ namespace CalradiaConnected.Campaign.Services
                         },
                         isLeave: false,
                         index: 1);
+
+                    // Phase 3: Join Nearby Co-op Battle option when an ally is fighting nearby
+                    starter.AddGameMenuOption(
+                        menuId,
+                        $"cc_join_coop_battle_{menuId}",
+                        Loc.T("Yakındaki Ortak Savaşa Katıl", "Join Nearby Co-op Battle"),
+                        (MenuCallbackArgs args) =>
+                        {
+                            if (ModContext.IsServerRunning || !ModContext.IsClientConnected) return false;
+                            var joinable = CoopBattleService.Instance.GetJoinableSessionsForLocalPlayer();
+                            if (joinable.Count == 0) return false;
+                            args.optionLeaveType = GameMenuOption.LeaveType.HostileAction;
+                            return true;
+                        },
+                        (MenuCallbackArgs args) =>
+                        {
+                            CoopBattleService.Instance.OpenNearbyCoopBattlesMenu();
+                        },
+                        isLeave: false,
+                        index: 2);
                 }
+
+                // Phase 4: Co-op Town Tournament menu option inside towns & town arena
+                foreach (string tourMenuId in new[] { "town", "town_arena" })
+                {
+                    starter.AddGameMenuOption(
+                        tourMenuId,
+                        $"cc_coop_tournament_{tourMenuId}",
+                        Loc.T("Ortak Turnuva", "Co-op Tournament"),
+                        (MenuCallbackArgs args) =>
+                        {
+                            if (ModContext.IsServerRunning || !ModContext.IsClientConnected) return false;
+                            var cur = Settlement.CurrentSettlement;
+                            if (cur == null || !cur.IsTown) return false;
+                            args.optionLeaveType = GameMenuOption.LeaveType.HostileAction;
+                            var lobby = CoopActivityService.Instance.GetTournamentLobbyForSettlement(cur);
+                            args.Tooltip = new TextObject(lobby != null
+                                ? Loc.F("Ortak Turnuvaya Katıl ({0} oyuncu)", "Join Co-op Tournament ({0} players)", lobby.ParticipantPeerIds.Count)
+                                : Loc.T("Ortak Turnuva Aç", "Host Co-op Tournament"));
+                            return true;
+                        },
+                        (MenuCallbackArgs args) =>
+                        {
+                            CoopActivityService.Instance.OpenOrManageCoopTournament(Settlement.CurrentSettlement);
+                        },
+                        isLeave: false,
+                        index: 2);
+                }
+
+                // Phase 4: Co-op Hideout Raid menu option at bandit hideouts
+                starter.AddGameMenuOption(
+                    "hideout_place",
+                    "cc_coop_hideout_raid",
+                    Loc.T("Ortak Sığınak Baskını", "Co-op Hideout Raid"),
+                    (MenuCallbackArgs args) =>
+                    {
+                        if (ModContext.IsServerRunning || !ModContext.IsClientConnected) return false;
+                        var cur = Settlement.CurrentSettlement;
+                        if (cur == null || !cur.IsHideout) return false;
+                        args.optionLeaveType = GameMenuOption.LeaveType.HostileAction;
+                        var lobby = CoopActivityService.Instance.GetHideoutLobbyForSettlement(cur);
+                        if (lobby != null)
+                        {
+                            args.Tooltip = new TextObject(Loc.F(
+                                "Ortak Sığınak Baskını ({0} müttefik hazır)",
+                                "Co-op Hideout Raid ({0} allies ready)",
+                                lobby.ParticipantPeerIds.Count));
+                        }
+                        return true;
+                    },
+                    (MenuCallbackArgs args) =>
+                    {
+                        CoopActivityService.Instance.OpenOrManageCoopHideoutRaid(Settlement.CurrentSettlement);
+                    },
+                    isLeave: false,
+                    index: 1);
             }
             catch (Exception ex)
             {
@@ -156,6 +233,7 @@ namespace CalradiaConnected.Campaign.Services
         private void OnMapEventEnded(MapEvent mapEvent)
         {
             BattleSyncService.Instance.NotifyLocalMapEventEnded(mapEvent);
+            CoopBattleService.Instance.OnLocalMapEventEnded(mapEvent);
         }
 
         private void OnTroopRecruited(Hero recruiterHero, Settlement recruitmentSettlement, Hero recruitmentSource, CharacterObject troop, int amount)
@@ -341,6 +419,7 @@ namespace CalradiaConnected.Campaign.Services
                         IsUnderSiege = true,
                         Progress = 0f
                     });
+                    PlayerArmyService.Instance.NotifyLocalSiegeStarted(siegeEvent.BesiegedSettlement);
                 }
             }
             catch { }

@@ -1806,8 +1806,206 @@ namespace CalradiaConnected.Verification
             }
 
             bool phase1DiplomacyPass = diplomacyPacketRoundtripOk && diplomacyServiceAndWiringOk && diplomacyLoc8LangOk;
-            Console.WriteLine($"[32/32] Phase 1: Kingdom, Conquest & Diplomacy Sync (PacketRoundtrip={diplomacyPacketRoundtripOk}, ServiceWiring={diplomacyServiceAndWiringOk}, Loc8Lang={diplomacyLoc8LangOk}) -> {(phase1DiplomacyPass ? "PASS" : "FAIL")}");
+            Console.WriteLine($"[32/35] Phase 1: Kingdom, Conquest & Diplomacy Sync (PacketRoundtrip={diplomacyPacketRoundtripOk}, ServiceWiring={diplomacyServiceAndWiringOk}, Loc8Lang={diplomacyLoc8LangOk}) -> {(phase1DiplomacyPass ? "PASS" : "FAIL")}");
             if (!phase1DiplomacyPass) failures++;
+
+            // 33. Phase 2 (v1.2.0): Player Army & Joint Campaign / Siege Synchronization
+            bool armyPacketOk = false;
+            bool armyServiceWiringOk = false;
+            {
+                var armyPktType = cmnAsm.GetType("CalradiaConnected.Common.Packets.PlayerArmySyncPacket");
+                var liteNetAsm33 = Assembly.LoadFrom(Path.Combine(_probeDirs[0], "LiteNetLib.dll"));
+                var writerType33 = liteNetAsm33.GetType("LiteNetLib.Utils.NetDataWriter")!;
+                var readerType33 = liteNetAsm33.GetType("LiteNetLib.Utils.NetDataReader")!;
+
+                if (armyPktType != null)
+                {
+                    object pkt = Activator.CreateInstance(armyPktType)!;
+                    armyPktType.GetProperty("ActionType")!.SetValue(pkt, (byte)6);
+                    armyPktType.GetProperty("ArmyId")!.SetValue(pkt, "cc_army_1001");
+                    armyPktType.GetProperty("LeaderPeerId")!.SetValue(pkt, 1001);
+                    armyPktType.GetProperty("TargetPeerId")!.SetValue(pkt, 1002);
+                    armyPktType.GetProperty("LeaderName")!.SetValue(pkt, "LordA");
+                    armyPktType.GetProperty("KingdomId")!.SetValue(pkt, "vlandia");
+                    armyPktType.GetProperty("ArmyMode")!.SetValue(pkt, (byte)1);
+                    armyPktType.GetProperty("Cohesion")!.SetValue(pkt, 92.5f);
+                    armyPktType.GetProperty("SiegeSettlementId")!.SetValue(pkt, "town_V1");
+                    armyPktType.GetProperty("MemberPeerIds")!.SetValue(pkt, new System.Collections.Generic.List<int> { 1002, 1003 });
+
+                    object w = Activator.CreateInstance(writerType33)!;
+                    armyPktType.GetMethod("Serialize")!.Invoke(pkt, new[] { w });
+                    byte[] bytes = (byte[])writerType33.GetMethod("CopyData")!.Invoke(w, null)!;
+                    object r = Activator.CreateInstance(readerType33, new object[] { bytes })!;
+                    object outPkt = Activator.CreateInstance(armyPktType)!;
+                    armyPktType.GetMethod("Deserialize")!.Invoke(outPkt, new[] { r });
+
+                    var members = (System.Collections.Generic.List<int>)armyPktType.GetProperty("MemberPeerIds")!.GetValue(outPkt)!;
+                    armyPacketOk = Convert.ToByte(armyPktType.GetProperty("Type")!.GetValue(outPkt)!) == 37
+                        && (byte)armyPktType.GetProperty("ActionType")!.GetValue(outPkt)! == 6
+                        && (string)armyPktType.GetProperty("ArmyId")!.GetValue(outPkt)! == "cc_army_1001"
+                        && (int)armyPktType.GetProperty("LeaderPeerId")!.GetValue(outPkt)! == 1001
+                        && (string)armyPktType.GetProperty("SiegeSettlementId")!.GetValue(outPkt)! == "town_V1"
+                        && members.Count == 2 && members[0] == 1002 && members[1] == 1003;
+                }
+
+                var armySvcType = cmpAsm.GetType("CalradiaConnected.Campaign.Services.PlayerArmyService");
+                bool hasArmyMethods = armySvcType?.GetMethod("InvitePeerToArmy", BindingFlags.Public | BindingFlags.Instance) != null
+                    && armySvcType?.GetMethod("LeaveLocalArmy", BindingFlags.Public | BindingFlags.Instance) != null
+                    && armySvcType?.GetMethod("DisbandLocalArmy", BindingFlags.Public | BindingFlags.Instance) != null
+                    && armySvcType?.GetMethod("NotifyLocalSiegeStarted", BindingFlags.Public | BindingFlags.Instance) != null
+                    && armySvcType?.GetMethod("TickArmyEscort", BindingFlags.Public | BindingFlags.Instance) != null
+                    && armySvcType?.GetMethod("ArePeersInSameArmy", BindingFlags.Public | BindingFlags.Instance) != null
+                    && armySvcType?.GetMethod("HandlePacket", BindingFlags.Public | BindingFlags.Instance) != null;
+
+                string routerSrc33 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Network", "Transport", "PacketRouter.cs"));
+                string pisSrc33 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Campaign", "Services", "PlayerInteractionService.cs"));
+                string subModSrc33 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Mod", "CalradiaConnectedSubModule.cs"));
+
+                armyServiceWiringOk = hasArmyMethods
+                    && routerSrc33.Contains("RegisterPacket<PlayerArmySyncPacket>()")
+                    && pisSrc33.Contains("cc_p2p_dip_army_invite")
+                    && pisSrc33.Contains("PlayerArmyService.Instance.InvitePeerToArmy")
+                    && subModSrc33.Contains("PlayerArmyService.Instance.HandlePacket")
+                    && subModSrc33.Contains("PlayerArmyService.Instance.TickArmyEscort");
+            }
+
+            bool phase2ArmyPass = armyPacketOk && armyServiceWiringOk;
+            Console.WriteLine($"[33/35] Phase 2: Player Army & Joint Campaign/Siege Sync (PacketRoundtrip={armyPacketOk}, ServiceWiring={armyServiceWiringOk}) -> {(phase2ArmyPass ? "PASS" : "FAIL")}");
+            if (!phase2ArmyPass) failures++;
+
+            // 34. Phase 3 (v1.2.0): Co-op Shared Battles (AI Lords/Bandits/Sieges) & Strict Friendly Fire OFF
+            bool coopBattlePacketOk = false;
+            bool coopBattleServiceOk = false;
+            bool friendlyFireOffEnforcedOk = false;
+            {
+                var cbPktType = cmnAsm.GetType("CalradiaConnected.Common.Packets.CoopBattleSyncPacket");
+                var liteNetAsm34 = Assembly.LoadFrom(Path.Combine(_probeDirs[0], "LiteNetLib.dll"));
+                var writerType34 = liteNetAsm34.GetType("LiteNetLib.Utils.NetDataWriter")!;
+                var readerType34 = liteNetAsm34.GetType("LiteNetLib.Utils.NetDataReader")!;
+
+                if (cbPktType != null)
+                {
+                    object pkt = Activator.CreateInstance(cbPktType)!;
+                    cbPktType.GetProperty("ActionType")!.SetValue(pkt, (byte)3);
+                    cbPktType.GetProperty("SessionId")!.SetValue(pkt, "coop_1001_99");
+                    cbPktType.GetProperty("HostPeerId")!.SetValue(pkt, 1001);
+                    cbPktType.GetProperty("ActorPeerId")!.SetValue(pkt, 1002);
+                    cbPktType.GetProperty("BattleKind")!.SetValue(pkt, (byte)1);
+                    cbPktType.GetProperty("TargetPartyId")!.SetValue(pkt, "lord_1_1_party");
+                    cbPktType.GetProperty("SettlementId")!.SetValue(pkt, "town_V1");
+                    cbPktType.GetProperty("SharedGoldLoot")!.SetValue(pkt, 450);
+                    cbPktType.GetProperty("SharedRenown")!.SetValue(pkt, 12);
+                    cbPktType.GetProperty("AlliedPeerIds")!.SetValue(pkt, new System.Collections.Generic.List<int> { 1001, 1002 });
+
+                    object w = Activator.CreateInstance(writerType34)!;
+                    cbPktType.GetMethod("Serialize")!.Invoke(pkt, new[] { w });
+                    byte[] bytes = (byte[])writerType34.GetMethod("CopyData")!.Invoke(w, null)!;
+                    object r = Activator.CreateInstance(readerType34, new object[] { bytes })!;
+                    object outPkt = Activator.CreateInstance(cbPktType)!;
+                    cbPktType.GetMethod("Deserialize")!.Invoke(outPkt, new[] { r });
+
+                    var allies = (System.Collections.Generic.List<int>)cbPktType.GetProperty("AlliedPeerIds")!.GetValue(outPkt)!;
+                    coopBattlePacketOk = Convert.ToByte(cbPktType.GetProperty("Type")!.GetValue(outPkt)!) == 38
+                        && (byte)cbPktType.GetProperty("ActionType")!.GetValue(outPkt)! == 3
+                        && (bool)cbPktType.GetProperty("FriendlyFireEnabled")!.GetValue(outPkt)! == false
+                        && (int)cbPktType.GetProperty("SharedGoldLoot")!.GetValue(outPkt)! == 450
+                        && allies.Count == 2;
+                }
+
+                var cbSvcType = cmpAsm.GetType("CalradiaConnected.Campaign.Services.CoopBattleService");
+                var missionsAsm34 = Assembly.LoadFrom(Path.Combine(_probeDirs[0], "CalradiaConnected.Missions.dll"));
+                var missionBehType34 = missionsAsm34.GetType("CalradiaConnected.Missions.CoopMissionSyncBehavior");
+
+                coopBattleServiceOk = cbSvcType?.GetMethod("OnLocalMapEventStarted", BindingFlags.Public | BindingFlags.Instance) != null
+                    && cbSvcType?.GetMethod("OnLocalMapEventEnded", BindingFlags.Public | BindingFlags.Instance) != null
+                    && cbSvcType?.GetMethod("RequestJoinCoopBattle", BindingFlags.Public | BindingFlags.Instance) != null
+                    && cbSvcType?.GetMethod("OpenNearbyCoopBattlesMenu", BindingFlags.Public | BindingFlags.Instance) != null
+                    && missionBehType34?.GetMethod("ConfigurePendingCoopSession", BindingFlags.Public | BindingFlags.Static) != null
+                    && missionBehType34?.GetMethod("HandleCoopBattleSyncPacket", BindingFlags.Public | BindingFlags.Static) != null
+                    && missionBehType34?.GetMethod("AreAgentsCoopAllies", BindingFlags.Public | BindingFlags.Static) != null;
+
+                string rulesPatchSrc34 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Mod", "Patches", "ServerRulesCombatPatch.cs"));
+                string missionSrc34 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Missions", "CoopMissionSyncBehavior.cs"));
+                friendlyFireOffEnforcedOk = rulesPatchSrc34.Contains("public static bool Prefix(Agent __instance, ref Blow blow)")
+                    && rulesPatchSrc34.Contains("CoopMissionSyncBehavior.AreAgentsCoopAllies(attacker, __instance)")
+                    && rulesPatchSrc34.Contains("return false;")
+                    && missionSrc34.Contains("!inst._coopFriendlyFireEnabled")
+                    && missionSrc34.Contains("AreAgentsCoopAllies(attacker, victim)");
+            }
+
+            bool phase3CoopBattlePass = coopBattlePacketOk && coopBattleServiceOk && friendlyFireOffEnforcedOk;
+            Console.WriteLine($"[34/35] Phase 3: Co-op Shared Battles & Strict Friendly Fire OFF (Packet={coopBattlePacketOk}, ServiceMission={coopBattleServiceOk}, FriendlyFireOFF={friendlyFireOffEnforcedOk}) -> {(phase3CoopBattlePass ? "PASS" : "FAIL")}");
+            if (!phase3CoopBattlePass) failures++;
+
+            // 35. Phase 4 (v1.2.0): Co-op Town Tournaments, Co-op Hideout Raids & 8-Language Expansion Copy
+            bool activityPacketOk = false;
+            bool activityServiceMenusOk = false;
+            bool expansionLoc8LangOk = false;
+            {
+                var actPktType = cmnAsm.GetType("CalradiaConnected.Common.Packets.CoopActivitySyncPacket");
+                var liteNetAsm35 = Assembly.LoadFrom(Path.Combine(_probeDirs[0], "LiteNetLib.dll"));
+                var writerType35 = liteNetAsm35.GetType("LiteNetLib.Utils.NetDataWriter")!;
+                var readerType35 = liteNetAsm35.GetType("LiteNetLib.Utils.NetDataReader")!;
+
+                if (actPktType != null)
+                {
+                    object pkt = Activator.CreateInstance(actPktType)!;
+                    actPktType.GetProperty("ActionType")!.SetValue(pkt, (byte)6);
+                    actPktType.GetProperty("ActivityId")!.SetValue(pkt, "tour_town_V1_1001");
+                    actPktType.GetProperty("SettlementId")!.SetValue(pkt, "town_V1");
+                    actPktType.GetProperty("HostPeerId")!.SetValue(pkt, 1001);
+                    actPktType.GetProperty("ActorPeerId")!.SetValue(pkt, 1002);
+                    actPktType.GetProperty("BracketSeed")!.SetValue(pkt, 424242);
+                    actPktType.GetProperty("RewardGold")!.SetValue(pkt, 750);
+                    actPktType.GetProperty("RewardRenown")!.SetValue(pkt, 15);
+                    actPktType.GetProperty("ParticipantPeerIds")!.SetValue(pkt, new System.Collections.Generic.List<int> { 1001, 1002 });
+
+                    object w = Activator.CreateInstance(writerType35)!;
+                    actPktType.GetMethod("Serialize")!.Invoke(pkt, new[] { w });
+                    byte[] bytes = (byte[])writerType35.GetMethod("CopyData")!.Invoke(w, null)!;
+                    object r = Activator.CreateInstance(readerType35, new object[] { bytes })!;
+                    object outPkt = Activator.CreateInstance(actPktType)!;
+                    actPktType.GetMethod("Deserialize")!.Invoke(outPkt, new[] { r });
+
+                    activityPacketOk = Convert.ToByte(actPktType.GetProperty("Type")!.GetValue(outPkt)!) == 39
+                        && (int)actPktType.GetProperty("BracketSeed")!.GetValue(outPkt)! == 424242
+                        && (int)actPktType.GetProperty("RewardGold")!.GetValue(outPkt)! == 750;
+                }
+
+                var actSvcType = cmpAsm.GetType("CalradiaConnected.Campaign.Services.CoopActivityService");
+                string sharedSrc35 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Campaign", "Services", "SharedCampaignSyncBehavior.cs"));
+                string subModSrc35 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Mod", "CalradiaConnectedSubModule.cs"));
+
+                activityServiceMenusOk = actSvcType?.GetMethod("OpenOrManageCoopTournament", BindingFlags.Public | BindingFlags.Instance) != null
+                    && actSvcType?.GetMethod("OpenOrManageCoopHideoutRaid", BindingFlags.Public | BindingFlags.Instance) != null
+                    && actSvcType?.GetMethod("OnLocalHideoutBattleCompleted", BindingFlags.Public | BindingFlags.Instance) != null
+                    && sharedSrc35.Contains("cc_coop_tournament_")
+                    && sharedSrc35.Contains("cc_coop_hideout_raid")
+                    && sharedSrc35.Contains("cc_join_coop_battle_")
+                    && subModSrc35.Contains("CoopActivityService.Instance.HandlePacket");
+
+                var locType35 = cmnAsm.GetType("CalradiaConnected.Common.Localization.Loc");
+                var setL35 = locType35?.GetMethod("SetLanguage", BindingFlags.Public | BindingFlags.Static);
+                var t35 = locType35?.GetMethod("T", BindingFlags.Public | BindingFlags.Static);
+                if (setL35 != null && t35 != null)
+                {
+                    setL35.Invoke(null, new object[] { "DE" });
+                    string deArmy = (string)t35.Invoke(null, new object[] { "Orduma Davet Et", "Invite to Army" })!;
+                    setL35.Invoke(null, new object[] { "RU" });
+                    string ruTour = (string)t35.Invoke(null, new object[] { "Ortak Turnuva", "Co-op Tournament" })!;
+                    setL35.Invoke(null, new object[] { "ZH" });
+                    string zhHide = (string)t35.Invoke(null, new object[] { "Ortak Sığınak Baskını", "Co-op Hideout Raid" })!;
+                    setL35.Invoke(null, new object[] { "TR" });
+
+                    expansionLoc8LangOk = deArmy == "Zur Armee einladen"
+                        && ruTour == "Совместный турнир"
+                        && zhHide == "合作突袭藏身处";
+                }
+            }
+
+            bool phase4ActivityPass = activityPacketOk && activityServiceMenusOk && expansionLoc8LangOk;
+            Console.WriteLine($"[35/35] Phase 4: Co-op Tournaments, Co-op Hideout Raids & 8-Lang Copy (Packet={activityPacketOk}, ServiceMenus={activityServiceMenusOk}, Loc8Lang={expansionLoc8LangOk}) -> {(phase4ActivityPass ? "PASS" : "FAIL")}");
+            if (!phase4ActivityPass) failures++;
 
             return failures;
         }

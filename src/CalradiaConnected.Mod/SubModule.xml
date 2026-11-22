@@ -1,7 +1,7 @@
 <Module>
   <Name value="Calradia-Connected"/>
   <Id value="CalradiaConnected"/>
-  <Version value="v1.1.17"/>
+  <Version value="v1.2.0"/>
   <SingleplayerModule value="true"/>
   <MultiplayerModule value="false"/>
   <DependedModules>

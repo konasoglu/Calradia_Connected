@@ -28,6 +28,40 @@ namespace CalradiaConnected.Missions
         public static string PendingOpponentName { get; set; } = string.Empty;
         public static bool PendingIsNavalBattle { get; set; }
 
+        // Phase 3 & 4: Co-op Shared Battle / Siege / Hideout Session State (Friendly Fire STRICTLY OFF by default)
+        public static string PendingCoopSessionId { get; set; } = string.Empty;
+        public static int PendingCoopHostPeerId { get; set; } = 0;
+        public static bool PendingCoopIsHost { get; set; } = false;
+        public static bool PendingCoopFriendlyFireEnabled { get; set; } = false;
+        public static HashSet<int> PendingCoopAlliedPeers { get; } = new HashSet<int>();
+
+        public static void ConfigurePendingCoopSession(string sessionId, bool isHost, int hostPeerId, IEnumerable<int>? alliedPeers, bool friendlyFire = false)
+        {
+            PendingCoopSessionId = sessionId ?? string.Empty;
+            PendingCoopIsHost = isHost;
+            PendingCoopHostPeerId = hostPeerId;
+            PendingCoopFriendlyFireEnabled = friendlyFire;
+            PendingCoopAlliedPeers.Clear();
+            if (hostPeerId > 0) PendingCoopAlliedPeers.Add(hostPeerId);
+            if (alliedPeers != null)
+            {
+                foreach (int p in alliedPeers)
+                {
+                    if (p > 0) PendingCoopAlliedPeers.Add(p);
+                }
+            }
+            ActiveInstance?.ConfigureCoopSession(sessionId ?? string.Empty, isHost, hostPeerId, PendingCoopAlliedPeers, friendlyFire);
+        }
+
+        public static void ClearPendingCoopSession()
+        {
+            PendingCoopSessionId = string.Empty;
+            PendingCoopHostPeerId = 0;
+            PendingCoopIsHost = false;
+            PendingCoopFriendlyFireEnabled = false;
+            PendingCoopAlliedPeers.Clear();
+        }
+
         private static PropertyInfo? _heroObjectProp;
         private static PropertyInfo? _heroStringIdProp;
         private static bool _reflectionInitAttempted;
@@ -114,6 +148,88 @@ namespace CalradiaConnected.Missions
         private bool _isInitialized = false;
         private bool _loggedFirstRemoteStateApplied = false;
 
+        // Active Co-op Shared Battle state (multi-peer allied heroes + Battle-Host authoritative AI enemies)
+        private string _coopSessionId = string.Empty;
+        private int _coopHostPeerId = 0;
+        private bool _isCoopHost = false;
+        private bool _coopFriendlyFireEnabled = false;
+        private readonly HashSet<int> _coopAlliedPeers = new HashSet<int>();
+        private readonly Dictionary<ushort, Agent> _coopEnemyAgents = new Dictionary<ushort, Agent>();
+        private readonly Dictionary<Agent, ushort> _coopEnemyIds = new Dictionary<Agent, ushort>();
+        private readonly Dictionary<ushort, TroopUnitSnapshot> _latestCoopEnemySnapshots = new Dictionary<ushort, TroopUnitSnapshot>();
+        private float _coopEnemySyncAccumulator = 0f;
+        private float _coopAllyScanAccumulator = 0f;
+        private const float COOP_ENEMY_SYNC_INTERVAL = 0.10f;
+
+        public bool IsCoopBattleActive => !string.IsNullOrEmpty(_coopSessionId);
+        public bool IsCoopFriendlyFireEnabled => _coopFriendlyFireEnabled;
+
+        public void ConfigureCoopSession(string sessionId, bool isHost, int hostPeerId, IEnumerable<int>? alliedPeers, bool friendlyFire = false)
+        {
+            _coopSessionId = sessionId ?? string.Empty;
+            _isCoopHost = isHost;
+            _coopHostPeerId = hostPeerId;
+            _coopFriendlyFireEnabled = friendlyFire;
+            _coopAlliedPeers.Clear();
+            if (hostPeerId > 0) _coopAlliedPeers.Add(hostPeerId);
+            if (alliedPeers != null)
+            {
+                foreach (int p in alliedPeers)
+                {
+                    if (p > 0) _coopAlliedPeers.Add(p);
+                }
+            }
+        }
+
+        public bool IsCoopAllyPeer(int peerId)
+        {
+            if (peerId <= 0) return false;
+            return _coopAlliedPeers.Contains(peerId) || PendingCoopAlliedPeers.Contains(peerId);
+        }
+
+        public static bool AreAgentsCoopAllies(Agent? attacker, Agent? victim)
+        {
+            if (attacker == null || victim == null) return false;
+
+            Agent resolvedAttacker = attacker.IsMount && attacker.RiderAgent != null ? attacker.RiderAgent : attacker;
+            Agent resolvedVictim = victim.IsMount && victim.RiderAgent != null ? victim.RiderAgent : victim;
+            if (resolvedAttacker == resolvedVictim) return false;
+
+            bool atkIsPlayer = IsHumanPlayerOrCoopPeerAgent(resolvedAttacker);
+            bool vicIsPlayer = IsHumanPlayerOrCoopPeerAgent(resolvedVictim);
+            if (!atkIsPlayer || !vicIsPlayer) return false;
+
+            // If we are in an active PvP duel/battle against an enemy peer, allow enemy damage
+            if (resolvedAttacker.Team != null && resolvedVictim.Team != null &&
+                resolvedAttacker.Team.IsEnemyOf(resolvedVictim.Team))
+            {
+                return false;
+            }
+
+            // Same team or allied team between two human players -> Co-op allies!
+            if (resolvedAttacker.Team != null && resolvedVictim.Team != null &&
+                (resolvedAttacker.Team == resolvedVictim.Team || resolvedAttacker.Team.IsFriendOf(resolvedVictim.Team)))
+            {
+                return true;
+            }
+
+            var inst = ActiveInstance;
+            if (inst != null && inst.IsCoopBattleActive)
+            {
+                return true;
+            }
+
+            return !string.IsNullOrEmpty(PendingCoopSessionId);
+        }
+
+        private static bool IsHumanPlayerOrCoopPeerAgent(Agent? agent)
+        {
+            if (agent == null || !agent.IsHuman) return false;
+            if (agent.IsMainAgent || agent.IsPlayerControlled) return true;
+            string? id = TryGetCharacterOrHeroStringId(agent, out bool isCcHero);
+            return isCcHero && !string.IsNullOrEmpty(id);
+        }
+
         public CoopMissionSyncBehavior(int opponentPeerId = 0, string? opponentName = null)
         {
             _initialOpponentPeerId = opponentPeerId;
@@ -194,6 +310,25 @@ namespace CalradiaConnected.Missions
             _loggedPvpMissionDiagnostic = false;
             _loggedFirstRemoteStateApplied = false;
 
+            // Hydrate active Co-op battle session if configured prior to mission load
+            _coopEnemyAgents.Clear();
+            _coopEnemyIds.Clear();
+            _latestCoopEnemySnapshots.Clear();
+            _coopEnemySyncAccumulator = 0f;
+            _coopAllyScanAccumulator = 0f;
+            if (!string.IsNullOrEmpty(PendingCoopSessionId))
+            {
+                ConfigureCoopSession(PendingCoopSessionId, PendingCoopIsHost, PendingCoopHostPeerId, PendingCoopAlliedPeers, PendingCoopFriendlyFireEnabled);
+            }
+            else
+            {
+                _coopSessionId = string.Empty;
+                _coopHostPeerId = 0;
+                _isCoopHost = false;
+                _coopFriendlyFireEnabled = false;
+                _coopAlliedPeers.Clear();
+            }
+
             ModContext.Events.Subscribe<PvpBattleStateChangedEvent>(OnPvpBattleStateChanged);
 
             try
@@ -214,7 +349,12 @@ namespace CalradiaConnected.Missions
                 PendingOpponentPeerId = 0;
                 PendingOpponentName = string.Empty;
                 PendingIsNavalBattle = false;
+                ClearPendingCoopSession();
             }
+            _coopEnemyAgents.Clear();
+            _coopEnemyIds.Clear();
+            _latestCoopEnemySnapshots.Clear();
+            _coopAlliedPeers.Clear();
             _remotePlayerAgents.Clear();
             _latestStates.Clear();
             _latestShipStates.Clear();
@@ -1112,6 +1252,14 @@ namespace CalradiaConnected.Missions
                 // Incoming damage directed at our local player hero, mount, shield, or one of our owned troops
                 if (packet.VictimPeerId == myPeerId)
                 {
+                    // Friendly Fire OFF: never accept incoming hero/mount/shield damage from a Co-op ally
+                    if (!inst._coopFriendlyFireEnabled &&
+                        packet.HitTargetKind != 3 &&
+                        inst.IsCoopAllyPeer(packet.AttackerPeerId))
+                    {
+                        return;
+                    }
+
                     if (packet.HitTargetKind == 3 && packet.TargetTroopUnitId > 0)
                     {
                         inst.ApplySyncedDamageToLocalTroop(packet);
@@ -1424,6 +1572,7 @@ namespace CalradiaConnected.Missions
             if (_missionElapsed - _lastShieldBlockBlowSentTime < 0.06f) return;
 
             if (!TryGetPeerIdForAgent(victim, out int victimPeerId)) return;
+            if (!_coopFriendlyFireEnabled && (IsCoopAllyPeer(victimPeerId) || AreAgentsCoopAllies(attacker, victim))) return;
 
             short shieldDmg = (short)Math.Max(8, (int)Math.Ceiling(fallbackDamage));
             try
@@ -1496,6 +1645,12 @@ namespace CalradiaConnected.Missions
                 bool attackerIsLocalHero = attacker.IsMainAgent;
                 bool attackerIsLocalTeam = attackerIsLocalHero || (Mission?.PlayerTeam != null && attacker.Team == Mission.PlayerTeam);
                 if (!attackerIsLocalTeam) return;
+
+                // Friendly Fire OFF guard: never transmit damage against a Co-op ally or their mount
+                if (!_coopFriendlyFireEnabled && AreAgentsCoopAllies(attacker, victim))
+                {
+                    return;
+                }
 
                 // 1) Shield block on remote player hero
                 if (attackerIsLocalHero && (collisionData.AttackBlockedWithShield || collisionData.MissileBlockedWithWeapon) &&
@@ -1595,6 +1750,23 @@ namespace CalradiaConnected.Missions
                         HitTargetKind = 3,
                         TargetTroopUnitId = remoteTroopUnitId,
                         IsAuthoritativeKill = false
+                    }, DeliveryMethod.ReliableOrdered);
+                    return;
+                }
+
+                // 5) Co-op Shared Battle: Ally reports hit/kill on an AI enemy to the Battle-Host
+                if (IsCoopBattleActive && !_isCoopHost && b.InflictedDamage > 0 &&
+                    _coopEnemyIds.TryGetValue(victim, out ushort coopEnemyId))
+                {
+                    ModContext.Client?.Send(new CoopBattleSyncPacket
+                    {
+                        ActionType = 7, // CoopDamageReport
+                        SessionId = _coopSessionId,
+                        HostPeerId = _coopHostPeerId,
+                        ActorPeerId = myPeerId,
+                        TargetEnemyUnitId = coopEnemyId,
+                        DamageAmount = b.InflictedDamage,
+                        IsKill = victim.Health <= 0.5f || !victim.IsActive()
                     }, DeliveryMethod.ReliableOrdered);
                 }
             }
@@ -1741,7 +1913,278 @@ namespace CalradiaConnected.Missions
                 ApplyRemoteTroopsStates(dt);
             }
 
+            if (IsCoopBattleActive && _combatUnlocked)
+            {
+                TickCoopSharedBattle(dt);
+            }
+
             _navalBridge.Tick(Mission, dt, ModContext.Client?.LocalPeerId ?? 1001, _latestShipStates, _remotePlayerAgents);
+        }
+
+        public static void HandleCoopBattleSyncPacket(CoopBattleSyncPacket packet)
+        {
+            if (packet == null) return;
+            ModContext.Dispatcher.Enqueue(() =>
+            {
+                var inst = ActiveInstance;
+                if (inst == null || inst.Mission == null) return;
+                if (!inst.IsCoopBattleActive || !string.Equals(inst._coopSessionId, packet.SessionId, StringComparison.Ordinal)) return;
+
+                int myPeerId = ModContext.Client?.LocalPeerId ?? -1;
+
+                if (packet.ActionType == 6 && !inst._isCoopHost && packet.EnemyUnits != null)
+                {
+                    for (int i = 0; i < packet.EnemyUnits.Count; i++)
+                    {
+                        var u = packet.EnemyUnits[i];
+                        if (u != null && u.UnitId > 0)
+                        {
+                            inst._latestCoopEnemySnapshots[u.UnitId] = u;
+                        }
+                    }
+                }
+                else if (packet.ActionType == 7 && inst._isCoopHost && packet.ActorPeerId != myPeerId && packet.TargetEnemyUnitId > 0)
+                {
+                    if (inst._coopEnemyAgents.TryGetValue(packet.TargetEnemyUnitId, out var enemy) &&
+                        enemy != null && enemy.IsActive())
+                    {
+                        inst._applyingNetworkBlow = true;
+                        try
+                        {
+                            if (packet.IsKill || enemy.Health <= packet.DamageAmount + 0.5f)
+                            {
+                                inst.ForceKnockoutOrKillAgent(enemy, isKilled: true);
+                            }
+                            else
+                            {
+                                enemy.Health = Math.Max(1f, enemy.Health - packet.DamageAmount);
+                            }
+                        }
+                        catch { }
+                        finally
+                        {
+                            inst._applyingNetworkBlow = false;
+                        }
+                    }
+                }
+            });
+        }
+
+        private void TickCoopSharedBattle(float dt)
+        {
+            if (Mission == null || Agent.Main == null) return;
+
+            _coopAllyScanAccumulator += dt;
+            if (_coopAllyScanAccumulator >= 0.75f)
+            {
+                _coopAllyScanAccumulator = 0f;
+                RefreshCoopEnemyIndex();
+                EnsureCoopAlliedAgentsSpawned();
+            }
+
+            if (_isCoopHost)
+            {
+                _coopEnemySyncAccumulator += dt;
+                if (_coopEnemySyncAccumulator >= COOP_ENEMY_SYNC_INTERVAL)
+                {
+                    _coopEnemySyncAccumulator = 0f;
+                    SendCoopEnemySnapshotsFromHost();
+                }
+            }
+            else
+            {
+                ApplyCoopEnemySnapshotsOnAlly(dt);
+            }
+        }
+
+        private void RefreshCoopEnemyIndex()
+        {
+            if (Mission == null || Agent.Main?.Team == null) return;
+
+            var enemies = new List<Agent>();
+            foreach (var a in Mission.Agents)
+            {
+                if (a == null || !a.IsHuman || a.IsMainAgent || a.Team == null) continue;
+                if (!a.Team.IsEnemyOf(Agent.Main.Team)) continue;
+                if (IsHumanPlayerOrCoopPeerAgent(a)) continue;
+                enemies.Add(a);
+            }
+
+            enemies.Sort((x, y) =>
+            {
+                string sx = x.Character?.StringId ?? string.Empty;
+                string sy = y.Character?.StringId ?? string.Empty;
+                int c = string.CompareOrdinal(sx, sy);
+                return c != 0 ? c : x.Index.CompareTo(y.Index);
+            });
+
+            _coopEnemyAgents.Clear();
+            _coopEnemyIds.Clear();
+            ushort id = 1;
+            for (int i = 0; i < enemies.Count && id < 60000; i++)
+            {
+                _coopEnemyAgents[id] = enemies[i];
+                _coopEnemyIds[enemies[i]] = id;
+                id++;
+            }
+        }
+
+        private void EnsureCoopAlliedAgentsSpawned()
+        {
+            if (Mission == null || Agent.Main == null || Mission.PlayerTeam == null) return;
+            int myPeerId = ModContext.Client?.LocalPeerId ?? -1;
+
+            foreach (int allyPeerId in _coopAlliedPeers)
+            {
+                if (allyPeerId <= 0 || allyPeerId == myPeerId) continue;
+                if (_remotePlayerAgents.TryGetValue(allyPeerId, out var existing) && existing != null && existing.IsActive()) continue;
+
+                // Try spawning allied hero beside local main hero if they aren't in the native battle roster
+                try
+                {
+                    string targetHeroId = $"cc_hero_{allyPeerId}";
+                    BasicCharacterObject? allyChar = null;
+                    var game = TaleWorlds.Core.Game.Current;
+                    if (game?.ObjectManager != null)
+                    {
+                        allyChar = game.ObjectManager.GetObject<BasicCharacterObject>(targetHeroId);
+                    }
+                    allyChar ??= Agent.Main.Character;
+                    if (allyChar == null) continue;
+
+                    Vec3 spawnPos = Agent.Main.Position + new Vec3(2.2f, 1.5f, 0f);
+                    if (_latestStates.TryGetValue(allyPeerId, out var st))
+                    {
+                        var remotePos = new Vec3(st.PosX, st.PosY, st.PosZ);
+                        if (remotePos.IsValid && remotePos.LengthSquared > 1f)
+                        {
+                            spawnPos = remotePos;
+                        }
+                    }
+
+                    Vec2 spawnDir = Agent.Main.LookDirection.AsVec2;
+                    if (spawnDir.LengthSquared < 0.01f) spawnDir = Vec2.Forward;
+
+                    var buildData = new AgentBuildData(allyChar)
+                        .Team(Mission.PlayerTeam)
+                        .InitialPosition(in spawnPos)
+                        .InitialDirection(in spawnDir)
+                        .NoHorses(false)
+                        .Controller(AgentControllerType.AI);
+
+                    var spawned = Mission.SpawnAgent(buildData);
+                    if (spawned != null)
+                    {
+                        _remotePlayerAgents[allyPeerId] = spawned;
+                        StripRemoteAgentAi(spawned);
+                    }
+                }
+                catch { }
+            }
+        }
+
+        private void SendCoopEnemySnapshotsFromHost()
+        {
+            if (_coopEnemyAgents.Count == 0) return;
+
+            var batch = new List<TroopUnitSnapshot>(TROOP_CHUNK_SIZE);
+            foreach (var kvp in _coopEnemyAgents)
+            {
+                var enemy = kvp.Value;
+                if (enemy == null) continue;
+
+                bool isAlive = enemy.IsActive();
+                byte flags = 0;
+                if (isAlive) flags |= 1;
+                if (enemy.HasMount) flags |= 2;
+                if (enemy.State == AgentState.Unconscious) flags |= 32;
+
+                var pos = enemy.Position;
+                var look = enemy.LookDirection;
+                float yaw = (float)Math.Atan2(look.y, look.x);
+                byte yawByte = (byte)(((yaw + Math.PI) / (2.0 * Math.PI)) * 255.0);
+
+                batch.Add(new TroopUnitSnapshot
+                {
+                    UnitId = kvp.Key,
+                    PosX = pos.x,
+                    PosY = pos.y,
+                    PosZ = pos.z,
+                    YawByte = yawByte,
+                    Health = isAlive ? (short)Math.Max(0, Math.Min(short.MaxValue, (int)Math.Ceiling(enemy.Health))) : (short)0,
+                    MaxHealth = (short)Math.Max(1, Math.Min(short.MaxValue, (int)Math.Ceiling(enemy.HealthLimit))),
+                    Flags = flags
+                });
+
+                if (batch.Count >= TROOP_CHUNK_SIZE)
+                {
+                    ModContext.Client?.Send(new CoopBattleSyncPacket
+                    {
+                        ActionType = 6,
+                        SessionId = _coopSessionId,
+                        HostPeerId = _coopHostPeerId,
+                        ActorPeerId = _coopHostPeerId,
+                        EnemyUnits = new List<TroopUnitSnapshot>(batch)
+                    }, DeliveryMethod.Unreliable);
+                    batch.Clear();
+                }
+            }
+
+            if (batch.Count > 0)
+            {
+                ModContext.Client?.Send(new CoopBattleSyncPacket
+                {
+                    ActionType = 6,
+                    SessionId = _coopSessionId,
+                    HostPeerId = _coopHostPeerId,
+                    ActorPeerId = _coopHostPeerId,
+                    EnemyUnits = batch
+                }, DeliveryMethod.Unreliable);
+            }
+        }
+
+        private void ApplyCoopEnemySnapshotsOnAlly(float dt)
+        {
+            if (_latestCoopEnemySnapshots.Count == 0) return;
+            float lerpAlpha = 1f - (float)Math.Exp(-8.0 * Math.Max(0.001f, dt));
+
+            foreach (var kvp in _latestCoopEnemySnapshots)
+            {
+                if (!_coopEnemyAgents.TryGetValue(kvp.Key, out var enemy) || enemy == null) continue;
+                var snap = kvp.Value;
+
+                bool snapAlive = (snap.Flags & 1) != 0;
+                bool snapUnconscious = (snap.Flags & 32) != 0;
+                if (!snapAlive)
+                {
+                    if (enemy.IsActive())
+                    {
+                        ForceKnockoutOrKillAgent(enemy, isKilled: !snapUnconscious);
+                    }
+                    continue;
+                }
+
+                if (!enemy.IsActive()) continue;
+
+                if (snap.Health > 0 && Math.Abs(enemy.Health - snap.Health) > 1.0f)
+                {
+                    enemy.Health = Math.Min(enemy.HealthLimit, snap.Health);
+                }
+
+                var targetPos = new Vec3(snap.PosX, snap.PosY, snap.PosZ);
+                if (targetPos.IsValid && targetPos.LengthSquared > 1f)
+                {
+                    float distSq = (targetPos - enemy.Position).LengthSquared;
+                    if (distSq > 9.0f)
+                    {
+                        try { enemy.TeleportToPosition(targetPos); } catch { }
+                    }
+                    else if (distSq > 0.25f)
+                    {
+                        try { enemy.TeleportToPosition(Vec3.Lerp(enemy.Position, targetPos, lerpAlpha)); } catch { }
+                    }
+                }
+            }
         }
 
         private bool HasImmediateLocalHeroTransition()

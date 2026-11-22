@@ -729,6 +729,29 @@ namespace CalradiaConnected.Campaign.Services
                 () => ExecuteDialogAction("rally", GetActivePartnerPeerId(), ActiveSessionId),
                 priority: 10020);
 
+            starter.AddPlayerLine("cc_p2p_dip_army_invite", "cc_p2p_diplomacy_hub", "cc_p2p_diplomacy_enter",
+                Loc.T("Orduma Davet Et", "Invite to Army"),
+                () => IsActiveP2PConversationPartner() &&
+                      !IsAtWarWithActivePartner() &&
+                      !PlayerArmyService.Instance.ArePeersInSameArmy(ModContext.Client?.LocalPeerId ?? -1, GetActivePartnerPeerId()),
+                () => PlayerArmyService.Instance.InvitePeerToArmy(GetActivePartnerPeerId()),
+                priority: 10018);
+
+            starter.AddPlayerLine("cc_p2p_dip_army_leave", "cc_p2p_diplomacy_hub", "cc_p2p_diplomacy_enter",
+                Loc.T("Ordudan Ayrıl", "Leave Army"),
+                () => IsActiveP2PConversationPartner() &&
+                      PlayerArmyService.Instance.IsPeerInAnyArmy(ModContext.Client?.LocalPeerId ?? -1) &&
+                      !PlayerArmyService.Instance.IsPeerArmyLeader(ModContext.Client?.LocalPeerId ?? -1),
+                () => PlayerArmyService.Instance.LeaveLocalArmy(),
+                priority: 10016);
+
+            starter.AddPlayerLine("cc_p2p_dip_army_disband", "cc_p2p_diplomacy_hub", "cc_p2p_diplomacy_enter",
+                Loc.T("Orduyu Dağıt", "Disband Army"),
+                () => IsActiveP2PConversationPartner() &&
+                      PlayerArmyService.Instance.IsPeerArmyLeader(ModContext.Client?.LocalPeerId ?? -1),
+                () => PlayerArmyService.Instance.DisbandLocalArmy(),
+                priority: 10015);
+
             starter.AddPlayerLine("cc_p2p_dip_back", "cc_p2p_diplomacy_hub", "cc_p2p_diplomacy_back",
                 Loc.T("Geri Dön", "Back"),
                 () => IsActiveP2PConversationPartner(),

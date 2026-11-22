@@ -128,4 +128,18 @@ namespace CalradiaConnected.Engine.Events
         public bool LocalWon { get; set; }
         public bool Resolved { get; set; }
     }
+
+    /// <summary>
+    /// Published by CoopBattleService / CoopActivityService to configure or clear
+    /// CoopMissionSyncBehavior's live Co-op session state (Friendly Fire OFF by default).
+    /// </summary>
+    public sealed class CoopBattleSessionUpdatedEvent
+    {
+        public bool IsActive { get; set; }
+        public string SessionId { get; set; } = string.Empty;
+        public bool IsHost { get; set; }
+        public int HostPeerId { get; set; }
+        public bool FriendlyFireEnabled { get; set; } = false;
+        public int[] AlliedPeerIds { get; set; } = System.Array.Empty<int>();
+    }
 }

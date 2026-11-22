@@ -47,7 +47,10 @@ namespace CalradiaConnected.Common.Packets
         ServerConfigSync = 35,
 
         // v1.2.0 Expansion: Kingdom/Diplomacy, Player Armies, Co-op Battles & Co-op Activities
-        KingdomDiplomacySync = 36
+        KingdomDiplomacySync = 36,
+        PlayerArmySync = 37,
+        CoopBattleSync = 38,
+        CoopActivitySync = 39
     }
 
     public interface IPacket : INetSerializable
