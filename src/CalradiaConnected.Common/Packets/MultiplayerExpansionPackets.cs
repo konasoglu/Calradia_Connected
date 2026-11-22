@@ -363,4 +363,69 @@ namespace CalradiaConnected.Common.Packets
             }
         }
     }
+
+    /// <summary>
+    /// Synchronizes server-spawned AI parties (Caravans, Villagers, Bandits, Looters, Lords)
+    /// to all connected clients with identical StringIds and coordinates, and allows clients
+    /// to request spawn metadata for any newly spawned AI party missing locally.
+    /// PartyKind:
+    /// 0 = RequestMissingFromServer (Client -> Server)
+    /// 1 = Caravan
+    /// 2 = Villager
+    /// 3 = Bandit
+    /// 4 = Looter
+    /// 5 = Lord
+    /// </summary>
+    public class AiPartySpawnSyncPacket : IPacket
+    {
+        public PacketType Type => PacketType.AiPartySpawnSync;
+
+        public byte PartyKind { get; set; }
+        public string PartyId { get; set; } = string.Empty;
+        public string OwnerHeroId { get; set; } = string.Empty;
+        public string LeaderHeroId { get; set; } = string.Empty;
+        public string ClanId { get; set; } = string.Empty;
+        public string SettlementId { get; set; } = string.Empty;
+        public string TemplateId { get; set; } = string.Empty;
+        public float PosX { get; set; }
+        public float PosY { get; set; }
+        public bool IsAtSea { get; set; }
+        public bool IsElite { get; set; }
+        public bool IsBossParty { get; set; }
+        public int TroopCount { get; set; }
+
+        public void Serialize(NetDataWriter writer)
+        {
+            writer.Put(PartyKind);
+            writer.Put(PartyId ?? string.Empty);
+            writer.Put(OwnerHeroId ?? string.Empty);
+            writer.Put(LeaderHeroId ?? string.Empty);
+            writer.Put(ClanId ?? string.Empty);
+            writer.Put(SettlementId ?? string.Empty);
+            writer.Put(TemplateId ?? string.Empty);
+            writer.Put(PosX);
+            writer.Put(PosY);
+            writer.Put(IsAtSea);
+            writer.Put(IsElite);
+            writer.Put(IsBossParty);
+            writer.Put(TroopCount);
+        }
+
+        public void Deserialize(NetDataReader reader)
+        {
+            PartyKind = reader.GetByte();
+            PartyId = reader.GetString();
+            OwnerHeroId = reader.GetString();
+            LeaderHeroId = reader.GetString();
+            ClanId = reader.GetString();
+            SettlementId = reader.GetString();
+            TemplateId = reader.GetString();
+            PosX = reader.GetFloat();
+            PosY = reader.GetFloat();
+            IsAtSea = reader.GetBool();
+            IsElite = reader.GetBool();
+            IsBossParty = reader.GetBool();
+            TroopCount = reader.GetInt();
+        }
+    }
 }

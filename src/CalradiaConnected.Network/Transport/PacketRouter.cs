@@ -51,6 +51,7 @@ namespace CalradiaConnected.Network.Transport
             RegisterPacket<PlayerArmySyncPacket>();
             RegisterPacket<CoopBattleSyncPacket>();
             RegisterPacket<CoopActivitySyncPacket>();
+            RegisterPacket<AiPartySpawnSyncPacket>();
         }
 
         public void RegisterPacket<T>() where T : class, INetSerializable, new()

@@ -334,8 +334,9 @@ namespace CalradiaConnected.Mod.Patches
     }
 
     /// <summary>
-    /// Synchronizes remote player party movement speeds (including cargo overburden penalties, wounded slowdowns,
-    /// and herd penalties) so an overburdened player walks at the exact same speed on the Server and all other Clients!
+    /// Synchronizes remote player AND AI party movement speeds on connected Clients (and remote player
+    /// speeds on the Server) so every caravan, villager, bandit, lord, and player moves at the exact
+    /// same speed as on the authoritative Server!
     /// </summary>
     [HarmonyPatch(typeof(DefaultPartySpeedCalculatingModel), "CalculateFinalSpeed")]
     public static class SyncedPlayerPartySpeedPatch
@@ -346,7 +347,10 @@ namespace CalradiaConnected.Mod.Patches
             try
             {
                 if (mobileParty == null || mobileParty.IsMainParty) return;
-                if (!NetworkObjectRegistry.IsPlayerNetworkParty(mobileParty)) return;
+
+                bool isPlayerParty = NetworkObjectRegistry.IsPlayerNetworkParty(mobileParty);
+                bool isConnectedClient = !CalradiaConnectedSubModule.IsServerProcess && ModContext.IsClientConnected;
+                if (!isPlayerParty && !isConnectedClient) return;
 
                 if (NetworkObjectRegistry.Instance.TryGetSyncedPartySpeed(mobileParty.StringId, out float syncedSpeed) &&
                     syncedSpeed > 0.05f)
@@ -356,6 +360,140 @@ namespace CalradiaConnected.Mod.Patches
             }
             catch (Exception) { }
         }
+    }
+
+    internal static class ClientAiAuthorityHelper
+    {
+        public static bool ShouldBlockAutonomousClientAi(MobileParty? party = null)
+        {
+            if (CalradiaConnectedSubModule.IsServerProcess || !ModContext.IsClientConnected)
+            {
+                return false;
+            }
+            if (party != null && party.IsMainParty)
+            {
+                return false;
+            }
+            return true;
+        }
+    }
+
+    // Prevent connected Clients from autonomously rerouting or spawning Caravans (Server is sole authority)
+    [HarmonyPatch(typeof(CaravansCampaignBehavior), "HourlyTickParty")]
+    public static class ClientBlockCaravanHourlyPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(MobileParty mobileParty) => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi(mobileParty);
+    }
+
+    [HarmonyPatch(typeof(CaravansCampaignBehavior), "DailyTickHero")]
+    public static class ClientBlockCaravanDailyHeroPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix() => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi();
+    }
+
+    [HarmonyPatch(typeof(CaravansCampaignBehavior), "DailyTick")]
+    public static class ClientBlockCaravanDailyPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix() => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi();
+    }
+
+    [HarmonyPatch(typeof(CaravansCampaignBehavior), "OnSettlementEntered")]
+    public static class ClientBlockCaravanSettlementEnteredPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(MobileParty mobileParty) => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi(mobileParty);
+    }
+
+    // Prevent connected Clients from autonomously spawning or routing Villager parties (Server is sole authority)
+    [HarmonyPatch(typeof(VillagerCampaignBehavior), "HourlyTickSettlement")]
+    public static class ClientBlockVillagerHourlySettlementPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix() => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi();
+    }
+
+    [HarmonyPatch(typeof(VillagerCampaignBehavior), "HourlyTickParty")]
+    public static class ClientBlockVillagerHourlyPartyPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(MobileParty villagerParty) => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi(villagerParty);
+    }
+
+    [HarmonyPatch(typeof(VillagerCampaignBehavior), "DailyTick")]
+    public static class ClientBlockVillagerDailyPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix() => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi();
+    }
+
+    [HarmonyPatch(typeof(VillagerCampaignBehavior), "OnSettlementEntered")]
+    public static class ClientBlockVillagerSettlementEnteredPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(MobileParty mobileParty) => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi(mobileParty);
+    }
+
+    // Prevent connected Clients from autonomously spawning Bandit/Looter parties (Server is sole authority)
+    [HarmonyPatch(typeof(BanditSpawnCampaignBehavior), "HourlyTickClan")]
+    public static class ClientBlockBanditHourlySpawnPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix() => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi();
+    }
+
+    [HarmonyPatch(typeof(BanditSpawnCampaignBehavior), "DailyTick")]
+    public static class ClientBlockBanditDailySpawnPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix() => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi();
+    }
+
+    // Prevent connected Clients from autonomously spawning AI Lord parties (Server syncs spawns via AiPartySpawnSync)
+    [HarmonyPatch(typeof(HeroSpawnCampaignBehavior), "ConsiderSpawningLordParties")]
+    public static class ClientBlockLordPartySpawnPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix() => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi();
+    }
+
+    // Prevent connected Clients from autonomously spawning/routing Patrol parties
+    [HarmonyPatch(typeof(PatrolPartiesCampaignBehavior), "DailyTickSettlement")]
+    public static class ClientBlockPatrolDailySpawnPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix() => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi();
+    }
+
+    [HarmonyPatch(typeof(PatrolPartiesCampaignBehavior), "HourlyTickParty")]
+    public static class ClientBlockPatrolHourlyPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(MobileParty mobileParty) => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi(mobileParty);
+    }
+
+    // Prevent connected Clients from autonomously disbanding AI parties that are still active on the Server
+    [HarmonyPatch(typeof(DisbandPartyCampaignBehavior), "HourlyTick")]
+    public static class ClientBlockDisbandHourlyPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix() => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi();
+    }
+
+    [HarmonyPatch(typeof(DisbandPartyCampaignBehavior), "HourlyTickParty")]
+    public static class ClientBlockDisbandHourlyPartyPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(MobileParty party) => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi(party);
+    }
+
+    [HarmonyPatch(typeof(DisbandPartyCampaignBehavior), "DailyTickParty")]
+    public static class ClientBlockDisbandDailyPartyPatch
+    {
+        [HarmonyPrefix]
+        public static bool Prefix(MobileParty mobileParty) => !ClientAiAuthorityHelper.ShouldBlockAutonomousClientAi(mobileParty);
     }
 
     /// <summary>

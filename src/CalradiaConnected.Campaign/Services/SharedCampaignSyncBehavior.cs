@@ -33,6 +33,7 @@ namespace CalradiaConnected.Campaign.Services
             CampaignEvents.OnUnitRecruitedEvent.AddNonSerializedListener(this, OnUnitRecruited);
             CampaignEvents.SettlementEntered.AddNonSerializedListener(this, OnSettlementEntered);
             CampaignEvents.OnSettlementLeftEvent.AddNonSerializedListener(this, OnSettlementLeft);
+            CampaignEvents.MobilePartyCreated.AddNonSerializedListener(this, OnMobilePartyCreated);
             CampaignEvents.MobilePartyDestroyed.AddNonSerializedListener(this, OnMobilePartyDestroyed);
             CampaignEvents.PlayerInventoryExchangeEvent.AddNonSerializedListener(this, OnPlayerInventoryExchange);
             CampaignEvents.OnSiegeEventStartedEvent.AddNonSerializedListener(this, OnSiegeEventStarted);
@@ -334,6 +335,12 @@ namespace CalradiaConnected.Campaign.Services
                 SettlementId = settlement.StringId
             });
             ModContext.Events.Publish(new LocalRosterChangedEvent { Reason = "SettlementLeft" });
+        }
+
+        private void OnMobilePartyCreated(MobileParty party)
+        {
+            if (!ModContext.IsServerRunning || party == null) return;
+            Sync.WorldSyncManager.BroadcastAiPartySpawn(party);
         }
 
         private void OnMobilePartyDestroyed(MobileParty party, PartyBase destroyerParty)

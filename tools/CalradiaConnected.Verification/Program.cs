@@ -2004,8 +2004,70 @@ namespace CalradiaConnected.Verification
             }
 
             bool phase4ActivityPass = activityPacketOk && activityServiceMenusOk && expansionLoc8LangOk;
-            Console.WriteLine($"[35/35] Phase 4: Co-op Tournaments, Co-op Hideout Raids & 8-Lang Copy (Packet={activityPacketOk}, ServiceMenus={activityServiceMenusOk}, Loc8Lang={expansionLoc8LangOk}) -> {(phase4ActivityPass ? "PASS" : "FAIL")}");
+            Console.WriteLine($"[35/36] Phase 4: Co-op Tournaments, Co-op Hideout Raids & 8-Lang Copy (Packet={activityPacketOk}, ServiceMenus={activityServiceMenusOk}, Loc8Lang={expansionLoc8LangOk}) -> {(phase4ActivityPass ? "PASS" : "FAIL")}");
             if (!phase4ActivityPass) failures++;
+
+            // 36. Authoritative Server NPC/Caravan/Lord Position Sync, Client Autonomous AI Lockdown & Live AI Spawn Sync
+            bool aiSpawnPacketOk = false;
+            bool clientAiLockdownOk = false;
+            bool worldSyncInterpolationAndJoinOk = false;
+            {
+                var spPktType = cmnAsm.GetType("CalradiaConnected.Common.Packets.AiPartySpawnSyncPacket");
+                var liteNetAsm36 = Assembly.LoadFrom(Path.Combine(_probeDirs[0], "LiteNetLib.dll"));
+                var writerType36 = liteNetAsm36.GetType("LiteNetLib.Utils.NetDataWriter")!;
+                var readerType36 = liteNetAsm36.GetType("LiteNetLib.Utils.NetDataReader")!;
+
+                if (spPktType != null)
+                {
+                    object pkt = Activator.CreateInstance(spPktType)!;
+                    spPktType.GetProperty("PartyKind")!.SetValue(pkt, (byte)1);
+                    spPktType.GetProperty("PartyId")!.SetValue(pkt, "caravan_party_42");
+                    spPktType.GetProperty("OwnerHeroId")!.SetValue(pkt, "notable_1");
+                    spPktType.GetProperty("SettlementId")!.SetValue(pkt, "town_V1");
+                    spPktType.GetProperty("PosX")!.SetValue(pkt, 212.5f);
+                    spPktType.GetProperty("PosY")!.SetValue(pkt, 334.25f);
+                    spPktType.GetProperty("IsElite")!.SetValue(pkt, true);
+                    spPktType.GetProperty("TroopCount")!.SetValue(pkt, 30);
+
+                    object w = Activator.CreateInstance(writerType36)!;
+                    spPktType.GetMethod("Serialize")!.Invoke(pkt, new[] { w });
+                    byte[] bytes = (byte[])writerType36.GetMethod("CopyData")!.Invoke(w, null)!;
+                    object r = Activator.CreateInstance(readerType36, new object[] { bytes })!;
+                    object outPkt = Activator.CreateInstance(spPktType)!;
+                    spPktType.GetMethod("Deserialize")!.Invoke(outPkt, new[] { r });
+
+                    aiSpawnPacketOk = Convert.ToByte(spPktType.GetProperty("Type")!.GetValue(outPkt)!) == 40
+                        && (byte)spPktType.GetProperty("PartyKind")!.GetValue(outPkt)! == 1
+                        && (string)spPktType.GetProperty("PartyId")!.GetValue(outPkt)! == "caravan_party_42"
+                        && (bool)spPktType.GetProperty("IsElite")!.GetValue(outPkt)! == true
+                        && (int)spPktType.GetProperty("TroopCount")!.GetValue(outPkt)! == 30;
+                }
+
+                clientAiLockdownOk = modAsm.GetType("CalradiaConnected.Mod.Patches.ClientBlockCaravanHourlyPatch") != null
+                    && modAsm.GetType("CalradiaConnected.Mod.Patches.ClientBlockVillagerHourlySettlementPatch") != null
+                    && modAsm.GetType("CalradiaConnected.Mod.Patches.ClientBlockBanditHourlySpawnPatch") != null
+                    && modAsm.GetType("CalradiaConnected.Mod.Patches.ClientBlockLordPartySpawnPatch") != null
+                    && modAsm.GetType("CalradiaConnected.Mod.Patches.ClientBlockPatrolDailySpawnPatch") != null
+                    && modAsm.GetType("CalradiaConnected.Mod.Patches.ClientBlockDisbandHourlyPatch") != null;
+
+                var wsmType36 = cmpAsm.GetType("CalradiaConnected.Campaign.Sync.WorldSyncManager");
+                string wsmSrc36 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Campaign", "Sync", "WorldSyncManager.cs"));
+                string sharedSrc36 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Campaign", "Services", "SharedCampaignSyncBehavior.cs"));
+                string subModSrc36 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Mod", "CalradiaConnectedSubModule.cs"));
+
+                worldSyncInterpolationAndJoinOk = wsmType36?.GetMethod("SendFullWorldSyncToPeer", BindingFlags.Public | BindingFlags.Instance) != null
+                    && wsmType36?.GetMethod("BroadcastAiPartySpawn", BindingFlags.Public | BindingFlags.Static) != null
+                    && wsmType36?.GetMethod("HandleAiPartySpawnPacket", BindingFlags.Public | BindingFlags.Instance) != null
+                    && wsmSrc36.Contains("InterpolateRemoteAiParties")
+                    && wsmSrc36.Contains("party.Ai?.SetDoNotMakeNewDecisions(true)")
+                    && sharedSrc36.Contains("CampaignEvents.MobilePartyCreated")
+                    && subModSrc36.Contains("_worldSync.SendFullWorldSyncToPeer")
+                    && subModSrc36.Contains("_worldSync.HandleAiPartySpawnPacket");
+            }
+
+            bool aiPositionSyncPass = aiSpawnPacketOk && clientAiLockdownOk && worldSyncInterpolationAndJoinOk;
+            Console.WriteLine($"[36/36] Authoritative AI/Caravan/Lord Map Sync, Client AI Lockdown & Live AI Spawn Sync (SpawnPkt={aiSpawnPacketOk}, ClientLockdown={clientAiLockdownOk}, InterpJoin={worldSyncInterpolationAndJoinOk}) -> {(aiPositionSyncPass ? "PASS" : "FAIL")}");
+            if (!aiPositionSyncPass) failures++;
 
             return failures;
         }

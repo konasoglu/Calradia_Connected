@@ -406,6 +406,11 @@ namespace CalradiaConnected.Mod
                     CoopActivityService.Instance.HandlePacket(packet);
                 });
 
+                _client.Router.Subscribe<Common.Packets.AiPartySpawnSyncPacket>((packet, peer) =>
+                {
+                    _worldSync.HandleAiPartySpawnPacket(packet, 0);
+                });
+
                 _client.Router.Subscribe<Common.Packets.ChatMessagePacket>((packet, peer) =>
                 {
                     _dispatcher?.Enqueue(() =>
@@ -479,6 +484,7 @@ namespace CalradiaConnected.Mod
                     PlayerHeroManager.Instance.HandleServerHeroCreatedPacket(packet);
                     CampaignTimeSyncBehavior.Instance?.BroadcastServerTime();
                     KingdomDiplomacySyncService.Instance.SendFullStateToPeer(packet.PeerId);
+                    _worldSync.SendFullWorldSyncToPeer(packet.PeerId);
                 });
 
                 _server.Router.Subscribe<Common.Packets.KingdomDiplomacySyncPacket>((packet, peer) =>
@@ -542,6 +548,12 @@ namespace CalradiaConnected.Mod
                         }
                     }
                     CoopActivityService.Instance.HandlePacket(packet);
+                });
+
+                _server.Router.Subscribe<Common.Packets.AiPartySpawnSyncPacket>((packet, peer) =>
+                {
+                    int senderPeerId = _server != null ? _server.ResolveSessionPeerId(peer, 0) : 0;
+                    _worldSync.HandleAiPartySpawnPacket(packet, senderPeerId);
                 });
 
                 _server.Router.Subscribe<Common.Packets.SettlementInteractionPacket>((packet, peer) =>

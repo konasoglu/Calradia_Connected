@@ -46,11 +46,12 @@ namespace CalradiaConnected.Common.Packets
         // Authoritative Server Config, Game Rules & Progression Sync
         ServerConfigSync = 35,
 
-        // v1.2.0 Expansion: Kingdom/Diplomacy, Player Armies, Co-op Battles & Co-op Activities
+        // v1.2.0 Expansion: Kingdom/Diplomacy, Player Armies, Co-op Battles, Co-op Activities & Authoritative AI Spawns
         KingdomDiplomacySync = 36,
         PlayerArmySync = 37,
         CoopBattleSync = 38,
-        CoopActivitySync = 39
+        CoopActivitySync = 39,
+        AiPartySpawnSync = 40
     }
 
     public interface IPacket : INetSerializable
