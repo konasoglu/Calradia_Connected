@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using CalradiaConnected.Common.Localization;
+using CoopServerManager.Services;
 
 namespace CoopServerManager;
 
@@ -12,6 +13,8 @@ public partial class App : Application
     {
         // Sync language with Windows OS culture before MainWindow & MainViewModel are constructed
         Loc.SyncFromSystemCulture();
+        // One-time repair if an older version leaked disable_sound=1 / max_framerate<=30 into engine_config.txt
+        ServerRunnerService.RepairLeakedEngineConfigOnce();
         base.OnStartup(e);
     }
 }

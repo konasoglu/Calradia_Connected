@@ -21,7 +21,48 @@ namespace CalradiaConnected.Campaign.Services
     {
         public static ServerGameRulesService Instance { get; } = new ServerGameRulesService();
 
+        private bool _hasSnapshottedBannerlordConfig;
+        private int _origBattleSize;
+        private int _origNumberOfCorpses;
+        private int _origDamageDifficulty;
+        private int _origAutoSaveInterval;
+
         private ServerGameRulesService() { }
+
+        private void SnapshotOriginalBannerlordConfigIfNeeded()
+        {
+            if (_hasSnapshottedBannerlordConfig) return;
+            try
+            {
+                _origBattleSize = BannerlordConfig.BattleSize;
+                _origNumberOfCorpses = BannerlordConfig.NumberOfCorpses;
+                _origDamageDifficulty = BannerlordConfig.PlayerReceivedDamageDifficulty;
+                _origAutoSaveInterval = BannerlordConfig.AutoSaveInterval;
+                _hasSnapshottedBannerlordConfig = true;
+            }
+            catch { }
+        }
+
+        /// <summary>
+        /// Restores the player's original vanilla BannerlordConfig values when leaving multiplayer
+        /// or exiting the game so server rules never overwrite the user's singleplayer BannerlordConfig.txt.
+        /// </summary>
+        public void RestoreOriginalBannerlordConfig()
+        {
+            if (!_hasSnapshottedBannerlordConfig) return;
+            try
+            {
+                BannerlordConfig.BattleSize = _origBattleSize;
+                BannerlordConfig.NumberOfCorpses = _origNumberOfCorpses;
+                BannerlordConfig.PlayerReceivedDamageDifficulty = _origDamageDifficulty;
+                BannerlordConfig.AutoSaveInterval = _origAutoSaveInterval;
+            }
+            catch { }
+            finally
+            {
+                _hasSnapshottedBannerlordConfig = false;
+            }
+        }
 
         public void LoadAndApplyOnServer()
         {
@@ -35,7 +76,8 @@ namespace CalradiaConnected.Campaign.Services
             var s = ServerRuntimeSettings.Current;
             try
             {
-                // 1. Bannerlord engine/config live settings
+                SnapshotOriginalBannerlordConfigIfNeeded();
+                // 1. Bannerlord engine/config live settings (restored on disconnect/exit)
                 BannerlordConfig.BattleSize = ServerRuntimeSettings.MapBattleSizeToIndex(s.BattleSize);
                 BannerlordConfig.NumberOfCorpses = ServerRuntimeSettings.MapCorpseCountToIndex(s.NumberOfCorpses);
                 BannerlordConfig.PlayerReceivedDamageDifficulty = Math.Max(0, Math.Min(2, s.DamageDifficulty));

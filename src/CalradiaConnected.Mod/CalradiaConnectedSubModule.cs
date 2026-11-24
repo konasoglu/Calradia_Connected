@@ -173,6 +173,11 @@ namespace CalradiaConnected.Mod
                 {
                     Services.ServerPerformanceOptimizer.Instance.ApplyStartupThrottles();
                 }
+                else
+                {
+                    // Auto-heal engine_config.txt once if an earlier version leaked disable_sound=1 / max_framerate<=30
+                    Services.ServerPerformanceOptimizer.RepairLeakedEngineConfigOnce();
+                }
                 
                 string? parsedSave = GetArgumentValue(args, "/coopsave") ?? GetArgumentValue(args, "/save");
                 if (!string.IsNullOrWhiteSpace(parsedSave))
@@ -1657,6 +1662,7 @@ namespace CalradiaConnected.Mod
         {
             try
             {
+                ServerGameRulesService.Instance.RestoreOriginalBannerlordConfig();
                 _ipcHost.Stop();
                 _embeddedSaveServer.Stop();
                 _harmony?.UnpatchAll("com.calradiaconnected.mod");
@@ -1665,6 +1671,16 @@ namespace CalradiaConnected.Mod
             catch { }
 
             base.OnSubModuleUnloaded();
+        }
+
+        public override void OnGameEnd(Game game)
+        {
+            try
+            {
+                ServerGameRulesService.Instance.RestoreOriginalBannerlordConfig();
+            }
+            catch { }
+            base.OnGameEnd(game);
         }
 
         public override void OnMissionBehaviorInitialize(Mission mission)

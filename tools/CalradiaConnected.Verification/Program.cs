@@ -2066,8 +2066,39 @@ namespace CalradiaConnected.Verification
             }
 
             bool aiPositionSyncPass = aiSpawnPacketOk && clientAiLockdownOk && worldSyncInterpolationAndJoinOk;
-            Console.WriteLine($"[36/36] Authoritative AI/Caravan/Lord Map Sync, Client AI Lockdown & Live AI Spawn Sync (SpawnPkt={aiSpawnPacketOk}, ClientLockdown={clientAiLockdownOk}, InterpJoin={worldSyncInterpolationAndJoinOk}) -> {(aiPositionSyncPass ? "PASS" : "FAIL")}");
+            Console.WriteLine($"[36/37] Authoritative AI/Caravan/Lord Map Sync, Client AI Lockdown & Live AI Spawn Sync (SpawnPkt={aiSpawnPacketOk}, ClientLockdown={clientAiLockdownOk}, InterpJoin={worldSyncInterpolationAndJoinOk}) -> {(aiPositionSyncPass ? "PASS" : "FAIL")}");
             if (!aiPositionSyncPass) failures++;
+
+            // 37. Zero Vanilla Config Leak Guard (Never Corrupted Graphics/FPS/Audio in engine_config.txt or BannerlordConfig.txt)
+            bool noNativeOptionsLeakOk = false;
+            bool noServerManagerConfigOverwriteOk = false;
+            bool selfHealAndRestoreOk = false;
+            {
+                string perfOptSrc37 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Mod", "Services", "ServerPerformanceOptimizer.cs"));
+                string runnerSrc37 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.ServerManager", "Services", "ServerRunnerService.cs"));
+                string rulesSrc37 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Campaign", "Services", "ServerGameRulesService.cs"));
+                string subModSrc37 = File.ReadAllText(Path.Combine(repoRootDir, "src", "CalradiaConnected.Mod", "CalradiaConnectedSubModule.cs"));
+
+                noNativeOptionsLeakOk = !perfOptSrc37.Contains("NativeOptions.SetConfig")
+                    && perfOptSrc37.Contains("ISimpleAudioVolume")
+                    && perfOptSrc37.Contains("TrySetCurrentProcessAudioMute")
+                    && perfOptSrc37.Contains("PaceServerFrame");
+
+                noServerManagerConfigOverwriteOk = !runnerSrc37.Contains("[\"disable_sound\"]")
+                    && !runnerSrc37.Contains("UpdateConfigFileWithFormat(engineConfigPath")
+                    && !runnerSrc37.Contains("UpdateConfigFileWithFormat(gameConfigPath");
+
+                selfHealAndRestoreOk = perfOptSrc37.Contains("RepairLeakedEngineConfigOnce")
+                    && runnerSrc37.Contains("RepairLeakedEngineConfigOnce")
+                    && rulesSrc37.Contains("SnapshotOriginalBannerlordConfigIfNeeded")
+                    && rulesSrc37.Contains("RestoreOriginalBannerlordConfig")
+                    && subModSrc37.Contains("RepairLeakedEngineConfigOnce")
+                    && subModSrc37.Contains("RestoreOriginalBannerlordConfig");
+            }
+
+            bool configIsolationPass = noNativeOptionsLeakOk && noServerManagerConfigOverwriteOk && selfHealAndRestoreOk;
+            Console.WriteLine($"[37/37] Singleplayer Graphics/Audio Config Isolation & Auto-Heal (NoNativeOptLeak={noNativeOptionsLeakOk}, NoDiskOverwrite={noServerManagerConfigOverwriteOk}, SelfHealRestore={selfHealAndRestoreOk}) -> {(configIsolationPass ? "PASS" : "FAIL")}");
+            if (!configIsolationPass) failures++;
 
             return failures;
         }

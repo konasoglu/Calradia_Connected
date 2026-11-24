@@ -506,47 +506,102 @@ namespace CoopServerManager.Services
         {
             try
             {
-                var docFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-                var configDir = Path.Combine(docFolder, "Mount and Blade II Bannerlord", "Configs");
-                if (!Directory.Exists(configDir))
-                {
-                    Directory.CreateDirectory(configDir);
-                }
+                // One-time repair if an older mod version left disable_sound=1 / max_framerate<=30 / muted volumes in engine_config.txt
+                RepairLeakedEngineConfigOnce();
 
-                // 1. Keep GPU/FPS out of engine_config.txt for shared client launches (server GPU/FPS throttling runs in-memory via mod-config.json).
-                // Write disable_sound from config.ServerDisableSound (FMOD audio init crashes right after banner_icons.xml when disable_sound = 0 in this environment).
-                var engineConfigPath = Path.Combine(configDir, "engine_config.txt");
-                var engineDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["safely_exited"] = "1",
-                    ["disable_sound"] = config.ServerDisableSound ? "1" : "0"
-                };
-
-                UpdateConfigFileWithFormat(engineConfigPath, engineDict, " = ", setReadOnly: false);
-
-                // 2. Configure BannerlordConfig.txt (BattleSize, Damage, AutoSave, Corpses)
-                var gameConfigPath = Path.Combine(configDir, "BannerlordConfig.txt");
-                var gameDict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-                {
-                    ["BattleSize"] = MapBattleSizeToIndex(config.BattleSize).ToString(),
-                    ["PlayerReceivedDamageDifficulty"] = Math.Clamp(config.DamageDifficulty, 0, 2).ToString(),
-                    ["AutoSaveInterval"] = Math.Max(0, config.AutoSaveIntervalMinutes).ToString(),
-                    ["NumberOfCorpses"] = MapCorpseCountToIndex(config.NumberOfCorpses).ToString(),
-                    ["StopGameOnFocusLost"] = "False"
-                };
-
-                UpdateConfigFileWithFormat(gameConfigPath, gameDict, "=", setReadOnly: false);
-
-                // 3. Configure mod-config.json (Starter Progression, Level, Focus, Gear & Multipliers) across all CoopData dirs
+                // NEVER overwrite Documents\Mount and Blade II Bannerlord\Configs\engine_config.txt or BannerlordConfig.txt!
+                // Writing disable_sound=1 or server battle/difficulty settings into shared vanilla config files corrupts
+                // players' normal singleplayer audio & graphics settings. All server rules and performance settings are
+                // stored strictly in our isolated mod-config.json and applied in-memory per session.
                 SyncModConfigToDisk(config);
 
-                OnLog?.Invoke($"[Yapılandırma] Oyun ve motor ayarları diske uygulandı (Savaş Boyutu: {config.BattleSize}, VRAM Seviyesi: {config.VramBudgetLevel}, FPS Sınırı: {config.ServerMaxFps}).");
+                OnLog?.Invoke($"[Yapılandırma] Sunucu ayarları yalıtılmış mod-config.json dosyasına yazıldı (Savaş Boyutu: {config.BattleSize}, VRAM Seviyesi: {config.VramBudgetLevel}, FPS Sınırı: {config.ServerMaxFps}).");
                 OnLog?.Invoke($"[Karakter & İlerleme] Başlangıç Seviyesi: {config.StartingLevel}, Odak: {config.StartingFocusPoints}, Nitelik: {config.StartingAttributePoints}, XP Çarpanı: {config.CharacterXpMultiplier}x, Yetenek XP: {config.SkillXpMultiplier}x, Dinar: {config.StartingGold:N0}.");
             }
             catch (Exception ex)
             {
                 OnLog?.Invoke($"[Yapılandırma Hatası] Dosyalar güncellenirken hata: {ex.Message}");
             }
+        }
+
+        public static void RepairLeakedEngineConfigOnce()
+        {
+            try
+            {
+                var docFolder = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+                var baseDir = Path.Combine(docFolder, "Mount and Blade II Bannerlord");
+                var dataDir = Path.Combine(baseDir, "CalradiaConnectedData");
+                var flagPath = Path.Combine(dataDir, "engine_config_healed_v1.flag");
+                if (File.Exists(flagPath)) return;
+
+                var engineConfigPath = Path.Combine(baseDir, "Configs", "engine_config.txt");
+                bool modified = false;
+
+                if (File.Exists(engineConfigPath))
+                {
+                    File.SetAttributes(engineConfigPath, FileAttributes.Normal);
+                    var lines = File.ReadAllLines(engineConfigPath).ToList();
+                    var map = new Dictionary<string, (int Index, string Value)>(StringComparer.OrdinalIgnoreCase);
+
+                    for (int i = 0; i < lines.Count; i++)
+                    {
+                        var trimmed = lines[i].Trim();
+                        if (string.IsNullOrWhiteSpace(trimmed) || trimmed.StartsWith("#") || trimmed.StartsWith("//")) continue;
+                        int eq = trimmed.IndexOf('=');
+                        if (eq <= 0) continue;
+                        map[trimmed.Substring(0, eq).Trim()] = (i, trimmed.Substring(eq + 1).Trim());
+                    }
+
+                    bool hadDisabledSound = map.TryGetValue("disable_sound", out var ds) && ds.Value == "1";
+                    if (hadDisabledSound)
+                    {
+                        lines[ds.Index] = "disable_sound = 0";
+                        modified = true;
+                    }
+
+                    if (map.TryGetValue("max_framerate", out var mf) &&
+                        int.TryParse(mf.Value, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int fps) &&
+                        fps >= 10 && fps <= 30)
+                    {
+                        lines[mf.Index] = "max_framerate = 360";
+                        modified = true;
+                    }
+
+                    bool IsZero(string k) => map.TryGetValue(k, out var e) &&
+                        float.TryParse(e.Value, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float v) &&
+                        v <= 0.001f;
+
+                    bool allAudioZeroed = IsZero("master_volume") && IsZero("sound_volume") && IsZero("music_volume") && IsZero("voice_over_volume");
+                    if (allAudioZeroed)
+                    {
+                        foreach (var k in new[] { "master_volume", "sound_volume", "music_volume", "voice_over_volume", "voice_chat_volume" })
+                        {
+                            if (map.TryGetValue(k, out var e)) lines[e.Index] = $"{k} = 1.0000";
+                        }
+                        modified = true;
+                    }
+                    else if (hadDisabledSound && IsZero("voice_chat_volume") && map.TryGetValue("voice_chat_volume", out var vce))
+                    {
+                        lines[vce.Index] = "voice_chat_volume = 1.0000";
+                        modified = true;
+                    }
+
+                    if (map.TryGetValue("texture_budget", out var tb) && tb.Value == "0" && (hadDisabledSound || allAudioZeroed || modified))
+                    {
+                        lines[tb.Index] = "texture_budget = 2";
+                        modified = true;
+                    }
+
+                    if (modified)
+                    {
+                        File.WriteAllLines(engineConfigPath, lines);
+                    }
+                }
+
+                Directory.CreateDirectory(dataDir);
+                File.WriteAllText(flagPath, $"Healed={modified};Utc={DateTime.UtcNow:O}");
+            }
+            catch { }
         }
 
         private static int MapBattleSizeToIndex(int battleSize)
